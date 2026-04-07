@@ -1,0 +1,156 @@
+{
+    "ticketId": "2071493",
+    "ticketSummary": "info@ mailbox restricted?",
+    "agents": [
+        {
+            "displayName": "Jacob Newman",
+            "azureId": "ea512bea-59c2-4602-9d62-5495f64149d7"
+        }
+    ],
+    "cardJson": {
+        "type": "AdaptiveCard",
+        "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.5",
+        "body": [
+            {
+                "type": "Container",
+                "style": "attention",
+                "items": [
+                    {
+                        "type": "TextBlock",
+                        "size": "Medium",
+                        "weight": "Bolder",
+                        "text": "New Out-of-Hours Ticket",
+                        "style": "heading",
+                        "wrap": true
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "[Ticket: 2071493](https://halo.virtuoso.tech/ticket?id=2071493)",
+                        "isSubtle": true,
+                        "spacing": "None",
+                        "wrap": true
+                    }
+                ]
+            },
+            {
+                "type": "ColumnSet",
+                "spacing": "Small",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "weight": "Bolder",
+                                "text": "Keren Hopkins | CIEH",
+                                "wrap": true
+                            },
+                            {
+                                "$when": "No == 'Yes'",
+                                "type": "TextBlock",
+                                "text": "VIP CUSTOMER",
+                                "weight": "Bolder",
+                                "color": "Attention",
+                                "spacing": "None",
+                                "wrap": true
+                            },
+                            {
+                                "type": "TextBlock",
+                                "spacing": "None",
+                                "text": "Created: 2026-03-06T12:22:24.04",
+                                "isSubtle": true,
+                                "wrap": true
+                            }
+                        ],
+                        "width": "stretch"
+                    }
+                ]
+            },
+            {
+                "type": "Container",
+                "spacing": "Small",
+                "style": "emphasis",
+                "id": "details-container",
+                "items": [
+                    {
+                        "type": "FactSet",
+                        "facts": [
+                            { "title": "Ticket Type", "value": "Incident" },
+                            { "title": "Status", "value": "New" },
+                            { "title": "Priority", "value": "P5" },
+                            { "title": "Team", "value": "UK: Level 1" },
+                            { "title": "Agent", "value": "Unassigned" }
+                        ]
+                    },
+                    {
+                        "type": "FactSet",
+                        "facts": [
+                            { "title": "SLA Response", "value": "March 6th 2026 at 2:22PM" },
+                            { "title": "SLA Resolution", "value": "March 10th 2026 at 12:22PM" }
+                        ],
+                        "spacing": "Small"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Agents on Shift",
+                        "size": "Small",
+                        "isSubtle": true,
+                        "wrap": true,
+                        "spacing": "Medium",
+                        "id": "agents-on-shift-label"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Summary",
+                        "size": "Small",
+                        "isSubtle": true,
+                        "wrap": true,
+                        "spacing": "Medium"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "info@ mailbox restricted?",
+                        "weight": "Bolder",
+                        "wrap": true,
+                        "spacing": "None"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Description",
+                        "size": "Small",
+                        "isSubtle": true,
+                        "wrap": true,
+                        "spacing": "Medium"
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Hiya\n\nWith Dean being on leave today - Can you check the mailbox info@, has sending been restricted due to exceeding bulk threshold?\n\nThis is due to customer complaints/queries.\n\nThanks\nKeren",
+                        "wrap": true,
+                        "spacing": "None"
+                    }
+                ]
+            },
+            {
+                "type": "TextBlock",
+                "text": "Available Actions:",
+                "weight": "Bolder",
+                "wrap": true,
+                "spacing": "Medium"
+            },
+            {
+                "type": "ActionSet",
+                "spacing": "Small",
+                "actions": [
+                    { "type": "Action.OpenUrl", "title": "Triage", "url": "https://halo.virtuoso.tech/ticket?id=2071493&newaction=40", "style": "positive" },
+                    { "type": "Action.OpenUrl", "title": "Verify User", "url": "https://halo.virtuoso.tech/ticket?id=2071493&newaction=80", "style": "positive" },
+                    { "type": "Action.OpenUrl", "title": "Cancel", "url": "https://halo.virtuoso.tech/ticket?id=2071493&newaction=101", "style": "positive" }
+                ]
+            }
+        ],
+        "actions": [
+            { "type": "Action.OpenUrl", "title": "View in Halo", "url": "https://halo.virtuoso.tech/ticket?id=2071493" }
+        ],
+        "speak": "New out of hours ticket: info@ mailbox restricted?"
+    }
+}

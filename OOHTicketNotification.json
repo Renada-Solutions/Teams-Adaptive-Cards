@@ -1,0 +1,167 @@
+{
+    "type": "AdaptiveCard",
+    "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.5",
+    "body": [
+        {
+            "type": "Container",
+            "style": "attention",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "size": "Medium",
+                    "weight": "Bolder",
+                    "text": "New OOH Ticket",
+                    "style": "heading",
+                    "wrap": true
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "[Ticket: <<ticket^id!>>](<<halo_url!>>/ticket?id=<<ticket^id!>>)",
+                    "isSubtle": true,
+                    "spacing": "None",
+                    "wrap": true
+                }
+            ]
+        },
+        {
+            "type": "ColumnSet",
+            "spacing": "Small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "weight": "Bolder",
+                            "text": "<<ticket^user_name!>> | <<ticket^client_name!>>",
+                            "wrap": true
+                        },
+                        {
+                            "$when": "<<MTN_VIPStatus!>> == 'Yes'",
+                            "type": "TextBlock",
+                            "text": "VIP CUSTOMER",
+                            "weight": "Bolder",
+                            "color": "Attention",
+                            "spacing": "None",
+                            "wrap": true
+                        },
+                        {
+                            "type": "TextBlock",
+                            "spacing": "None",
+                            "text": "Created: <<MTN_FormattedDateTime!>>",
+                            "isSubtle": true,
+                            "wrap": true
+                        }
+                    ],
+                    "width": "stretch"
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "spacing": "Small",
+            "style": "emphasis",
+            "id": "details-container",
+            "items": [
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {
+                            "title": "Ticket Type:",
+                            "value": "<<MTN_TicketTypeName!>>"
+                        },
+                        {
+                            "title": "Status:",
+                            "value": "<<ticket^status_name!>>"
+                        },
+                        {
+                            "title": "Priority:",
+                            "value": "<<MTN_PriorityName!>>"
+                        },
+                        {
+                            "title": "Team:",
+                            "value": "<<MTN_TeamName!>>"
+                        },
+                        {
+                            "title": "Agent:",
+                            "value": "<<ticket^agent_name!>>"
+                        }
+                    ]
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {
+                            "title": "SLA Response:",
+                            "value": "<<MTN_FormattedResponseTarget!>>"
+                        },
+                        {
+                            "title": "SLA Resolution:",
+                            "value": "<<MTN_FormattedResolutionTarget!>>"
+                        }
+                    ],
+                    "spacing": "Small"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "Agents on Shift",
+                    "size": "Small",
+                    "isSubtle": true,
+                    "wrap": true,
+                    "spacing": "Medium",
+                    "id": "agents-on-shift-label"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "Summary",
+                    "size": "Small",
+                    "isSubtle": true,
+                    "wrap": true,
+                    "spacing": "Medium"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "<<ticket^summary!>>",
+                    "weight": "Bolder",
+                    "wrap": true,
+                    "spacing": "None"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "Description",
+                    "size": "Small",
+                    "isSubtle": true,
+                    "wrap": true,
+                    "spacing": "Medium"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "<<MTN_TicketDetailsHTML!>>",
+                    "wrap": true,
+                    "spacing": "None"
+                }
+            ]
+        },
+        {
+            "type": "TextBlock",
+            "text": "Available Actions:",
+            "weight": "Bolder",
+            "wrap": true,
+            "spacing": "Medium"
+        },
+        {
+            "type": "ActionSet",
+            "spacing": "Small",
+            "actions": <<MTN_AvailableActions>>
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.OpenUrl",
+            "title": "View in Halo",
+            "url": "<<halo_url!>>/ticket?id=<<ticket^id!>>"
+        }
+    ],
+    "speak": "New OOH ticket: <<ticket^summary!>>"
+}

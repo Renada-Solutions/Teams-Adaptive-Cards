@@ -1,0 +1,189 @@
+{
+    "type": "AdaptiveCard",
+    "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.5",
+    "body": [
+        {
+            "type": "Container",
+            "style": "attention",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "size": "Medium",
+                    "weight": "Bolder",
+                    "text": "New Out-of-Hours Ticket",
+                    "style": "heading",
+                    "wrap": true
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "[Ticket: 10066](https://halo.renada.co.uk/ticket?id=10066)",
+                    "isSubtle": true,
+                    "spacing": "None",
+                    "wrap": true
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "style": "attention",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "Priority: P1 - Critical",
+                    "weight": "Bolder",
+                    "color": "Attention",
+                    "wrap": true
+                }
+            ],
+            "spacing": "Small"
+        },
+        {
+            "type": "ColumnSet",
+            "spacing": "Small",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "weight": "Bolder",
+                            "text": "Markus McIver | Virtuoso",
+                            "wrap": true
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": "VIP CUSTOMER",
+                            "weight": "Bolder",
+                            "color": "Attention",
+                            "spacing": "None",
+                            "wrap": true
+                        },
+                        {
+                            "type": "TextBlock",
+                            "spacing": "None",
+                            "text": "Created: February 20th 2026 at 2:30PM",
+                            "isSubtle": true,
+                            "wrap": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "spacing": "Small",
+            "style": "emphasis",
+            "items": [
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {
+                            "title": "Ticket Type",
+                            "value": "Incident"
+                        },
+                        {
+                            "title": "Status",
+                            "value": "New"
+                        },
+                        {
+                            "title": "Priority",
+                            "value": "P1 - Critical"
+                        },
+                        {
+                            "title": "Team",
+                            "value": "Service Desk"
+                        },
+                        {
+                            "title": "Agent",
+                            "value": "Jacob Newman"
+                        }
+                    ]
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {
+                            "title": "SLA Response",
+                            "value": "February 20th 2026 at 3:30PM"
+                        },
+                        {
+                            "title": "SLA Resolution",
+                            "value": "February 21st 2026 at 9:00AM"
+                        }
+                    ],
+                    "spacing": "Small"
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "spacing": "Medium",
+            "style": "emphasis",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "Server down - unable to connect to production environment",
+                    "weight": "Bolder",
+                    "wrap": true
+                },
+                {
+                    "type": "RichTextBlock",
+                    "inlines": [
+                        {
+                            "type": "TextRun",
+                            "text": "Hi Team, we are experiencing a complete outage on our production server. No users are able to connect and all services are down. This started approximately 30 minutes ago. Please investigate urgently."
+                        }
+                    ],
+                    "spacing": "Small"
+                }
+            ]
+        },
+        {
+            "type": "TextBlock",
+            "text": "Available Actions:",
+            "weight": "Bolder",
+            "wrap": true,
+            "spacing": "Medium"
+        },
+        {
+            "type": "ActionSet",
+            "spacing": "Small",
+            "actions": [
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "Acknowledge",
+                    "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=192",
+                    "style": "positive"
+                },
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "Escalate",
+                    "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=168",
+                    "style": "positive"
+                },
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "Update Ticket",
+                    "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=167",
+                    "style": "positive"
+                },
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "Re-Assign",
+                    "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=11",
+                    "style": "positive"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.OpenUrl",
+            "title": "View in Halo",
+            "url": "https://halo.renada.co.uk/ticket?id=10066"
+        }
+    ],
+    "speak": "New out of hours ticket: Server down"
+}

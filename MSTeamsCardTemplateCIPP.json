@@ -1,0 +1,117 @@
+{
+            "type": "AdaptiveCard",
+            "body": [
+                {
+                    "type": "TextBlock",
+                    "size": "medium",
+                    "weight": "bolder",
+                    "text": "CIPP Deployment Information Provided!",
+                    "style": "heading",
+                    "wrap": true
+                },
+                {
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "items": [
+                                {
+                                    "type": "Image",
+                                    "style": "Person",
+                                    "url": "https://media.licdn.com/dms/image/v2/D4E0BAQESnRG0cAWGyA/company-logo_200_200/company-logo_200_200/0/1693165692010?e=2147483647&v=beta&t=AWycNqkC_4dQeGeFQhlGmY4_cBqcWuz4FNFhu7lR-Cg",
+                                    "altText": "<<action^who!>>",
+                                    "size": "Small"
+                                }
+                            ],
+                            "width": "auto"
+                        },
+                        {
+                            "type": "Column",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "weight": "Bolder",
+                                    "text": "<<action^who!>>",
+                                    "wrap": true
+                                },
+                                {
+                                    "type": "TextBlock",
+                                    "spacing": "None",
+                                    "text": "<<action^datetime!>>",
+                                    "isSubtle": true,
+                                    "wrap": true
+                                }
+                            ],
+                            "width": "auto"
+                        }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "Please see the below CIPP Deployment Information provided by <<action^who!>> which has now been added to Task (<<ticket^id!>>)",
+                    "wrap": true
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {
+                            "title": "Customer",
+                            "value": "<<CFCIPPCustomerName!>>"
+                        },
+                        {
+                            "title": "Task",
+                            "value": "<<ticket^summary!>>"
+                        },
+                        {
+                            "title": "CIPP Deployed",
+                            "value": "<<CFHaveCippInstance!>>"
+                        }
+                    ]
+                },
+                {
+                    "$when": "<<CFHaveCippInstance!>> == 'Yes'",
+                    "type": "FactSet",
+                    "facts": [
+                        {
+                            "title": "Hosting Type",
+                            "value": "<<CFHostingType!>>"
+                        }
+                    ]
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Action.ShowCard",
+                    "title": "Set due date",
+                    "card": {
+                        "type": "AdaptiveCard",
+                        "body": [
+                            {
+                                "type": "Input.Date",
+                                "id": "dueDate"
+                            },
+                            {
+                                "type": "Input.Text",
+                                "id": "comment",
+                                "placeholder": "Add a comment",
+                                "isMultiline": true
+                            }
+                        ],
+                        "actions": [
+                            {
+                                "type": "Action.Submit",
+                                "title": "OK"
+                            }
+                        ],
+                        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json"
+                    }
+                },
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "View",
+                    "url": "https://halo.renada.co.uk/ticket?id=<<action^ticket_id>>"
+                }
+            ],
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.5"
+        }

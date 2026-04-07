@@ -1,0 +1,44 @@
+{
+    "ticket": {
+        "id": "10066",
+        "summary": "Server down - unable to connect to production environment",
+        "details": "Hi Team, we are experiencing a complete outage on our production server. No users are able to connect and all services are down. This started approximately 30 minutes ago. Please investigate urgently.",
+        "tickettype_name": "Incident",
+        "status_name": "New",
+        "priority_name": "P1",
+        "team_name": "Service Desk",
+        "agent_name": "Jacob Newman",
+        "user_name": "Markus McIver",
+        "client_name": "Virtuoso",
+        "dateoccurred": "February 20th 2026 at 2:30PM"
+    },
+    "CF_VIP_STATUS": "Yes",
+    "CF_SLA_RESPONSE_TARGET": "February 20th 2026 at 3:30PM",
+    "CF_SLA_RESOLUTION_TARGET": "February 21st 2026 at 9:00AM",
+    "CF_ACTIONS_JSON": [
+        {
+            "type": "Action.OpenUrl",
+            "title": "Acknowledge",
+            "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=192",
+            "style": "positive"
+        },
+        {
+            "type": "Action.OpenUrl",
+            "title": "Escalate",
+            "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=168",
+            "style": "positive"
+        },
+        {
+            "type": "Action.OpenUrl",
+            "title": "Update Ticket",
+            "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=167",
+            "style": "positive"
+        },
+        {
+            "type": "Action.OpenUrl",
+            "title": "Re-Assign",
+            "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=11",
+            "style": "positive"
+        }
+    ]
+}

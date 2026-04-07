@@ -1,0 +1,42 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.17",
+    "version": "1.1.0",
+    "id": "1624c0e3-2633-48a7-8bdb-07466726515e",
+    "developer": {
+        "name": "Renada Solutions Ltd",
+        "websiteUrl": "https://renada.co.uk",
+        "privacyUrl": "https://renada.co.uk/privacy",
+        "termsOfUseUrl": "https://renada.co.uk/terms"
+    },
+    "name": {
+        "short": "Halo | Teams Notifications",
+        "full": "HaloPSA Teams Notifications"
+    },
+    "description": {
+        "short": "Creates Microsoft Teams Adaptive Cards for configured HaloPSA events.",
+        "full": "Creates Microsoft Teams Adaptive Cards for configured HaloPSA events. For more information, please visit our website."
+    },
+    "icons": {
+        "outline": "outline.png",
+        "color": "color.png"
+    },
+    "accentColor": "#4B0082",
+    "bots": [
+        {
+            "botId": "1624c0e3-2633-48a7-8bdb-07466726515e",
+            "scopes": [
+                "team"
+            ],
+            "isNotificationOnly": true,
+            "supportsFiles": false
+        }
+    ],
+    "permissions": [
+        "identity",
+        "messageTeamMembers"
+    ],
+    "validDomains": [
+        "halo-teams-notifcations.azurewebsites.net"
+    ]
+}

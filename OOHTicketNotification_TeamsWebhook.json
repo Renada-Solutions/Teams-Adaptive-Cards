@@ -1,0 +1,219 @@
+{
+    "type": "message",
+    "attachments": [
+        {
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "contentUrl": null,
+            "content": {
+                "type": "AdaptiveCard",
+                "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+                "version": "1.5",
+                "body": [
+                    {
+                        "type": "Container",
+                        "style": "attention",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "size": "Medium",
+                                "weight": "Bolder",
+                                "text": "New Out-of-Hours Ticket",
+                                "style": "heading",
+                                "wrap": true
+                            },
+                            {
+                                "type": "TextBlock",
+                                "text": "[Ticket: <<ticket^id!>>](https://halo.renada.co.uk/ticket?id=<<ticket^id!>>)",
+                                "isSubtle": true,
+                                "spacing": "None",
+                                "wrap": true
+                            }
+                        ]
+                    },
+                    {
+                        "$when": "<<ticket^priority_name!>> == 'P1'",
+                        "type": "Container",
+                        "style": "attention",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "Priority: <<ticket^priority_name!>>",
+                                "weight": "Bolder",
+                                "color": "Attention",
+                                "wrap": true
+                            }
+                        ],
+                        "spacing": "Small"
+                    },
+                    {
+                        "$when": "<<ticket^priority_name!>> == 'P2'",
+                        "type": "Container",
+                        "style": "warning",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "Priority: <<ticket^priority_name!>>",
+                                "weight": "Bolder",
+                                "color": "Warning",
+                                "wrap": true
+                            }
+                        ],
+                        "spacing": "Small"
+                    },
+                    {
+                        "$when": "<<ticket^priority_name!>> == 'P3'",
+                        "type": "Container",
+                        "style": "accent",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "Priority: <<ticket^priority_name!>>",
+                                "weight": "Bolder",
+                                "wrap": true
+                            }
+                        ],
+                        "spacing": "Small"
+                    },
+                    {
+                        "$when": "<<ticket^priority_name!>> == 'P4'",
+                        "type": "Container",
+                        "style": "good",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "Priority: <<ticket^priority_name!>>",
+                                "weight": "Bolder",
+                                "color": "Good",
+                                "wrap": true
+                            }
+                        ],
+                        "spacing": "Small"
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "Small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "weight": "Bolder",
+                                        "text": "<<ticket^user_name!>> | <<ticket^client_name!>>",
+                                        "wrap": true
+                                    },
+                                    {
+                                        "$when": "<<CF_VIP_STATUS!>> == 'Yes'",
+                                        "type": "TextBlock",
+                                        "text": "VIP CUSTOMER",
+                                        "weight": "Bolder",
+                                        "color": "Attention",
+                                        "spacing": "None",
+                                        "wrap": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "spacing": "None",
+                                        "text": "Created: <<ticket^dateoccurred!>>",
+                                        "isSubtle": true,
+                                        "wrap": true
+                                    }
+                                ],
+                                "width": "stretch"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Container",
+                        "spacing": "Small",
+                        "style": "emphasis",
+                        "items": [
+                            {
+                                "type": "FactSet",
+                                "facts": [
+                                    {
+                                        "title": "Ticket Type",
+                                        "value": "<<ticket^tickettype_name!>>"
+                                    },
+                                    {
+                                        "title": "Status",
+                                        "value": "<<ticket^status_name!>>"
+                                    },
+                                    {
+                                        "title": "Priority",
+                                        "value": "<<ticket^priority_name!>>"
+                                    },
+                                    {
+                                        "title": "Team",
+                                        "value": "<<ticket^team_name!>>"
+                                    },
+                                    {
+                                        "title": "Agent",
+                                        "value": "<<ticket^agent_name!>>"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "FactSet",
+                                "facts": [
+                                    {
+                                        "title": "SLA Response",
+                                        "value": "<<CF_SLA_RESPONSE_TARGET!>>"
+                                    },
+                                    {
+                                        "title": "SLA Resolution",
+                                        "value": "<<CF_SLA_RESOLUTION_TARGET!>>"
+                                    }
+                                ],
+                                "spacing": "Small"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Container",
+                        "spacing": "Medium",
+                        "style": "emphasis",
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "<<ticket^summary!>>",
+                                "weight": "Bolder",
+                                "wrap": true
+                            },
+                            {
+                                "type": "RichTextBlock",
+                                "inlines": [
+                                    {
+                                        "type": "TextRun",
+                                        "text": "<<ticket^details!>>"
+                                    }
+                                ],
+                                "spacing": "Small"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Available Actions:",
+                        "weight": "Bolder",
+                        "wrap": true,
+                        "spacing": "Medium"
+                    },
+                    {
+                        "type": "ActionSet",
+                        "spacing": "Small",
+                        "actions": <<CF_ACTIONS_JSON!>>
+                    }
+                ],
+                "actions": [
+                    {
+                        "type": "Action.OpenUrl",
+                        "title": "View in Halo",
+                        "url": "https://halo.renada.co.uk/ticket?id=<<ticket^id!>>"
+                    }
+                ],
+                "speak": "New out of hours ticket: <<ticket^summary!>>"
+            }
+        }
+    ]
+}

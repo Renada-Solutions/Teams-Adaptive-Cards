@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Azure Functions local settings (contains secrets)
+local.settings.json
+
+# Environment files
+.env
+.env.*
+
+# VS Code workspace settings (optional — remove if you want to share)
+# .vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Playwright MCP
+.playwright-mcp/
+
+# Claude Code session data
+.claude/

@@ -1,0 +1,229 @@
+{
+    "type": "AdaptiveCard",
+    "attachments": [
+        {
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "contentUrl": null,
+            "content": {
+                "type": "AdaptiveCard",
+                "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+                "version": "1.6",
+                "body": [
+                    {
+                        "type": "TextBlock",
+                        "size": "Medium",
+                        "weight": "Bolder",
+                        "text": "MS Teams Notifications for On-call engineer",
+                        "style": "heading",
+                        "wrap": true
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "[Ticket: 10066](https://halo.renada.co.uk/ticket?id=10066)",
+                        "isSubtle": true,
+                        "spacing": "None",
+                        "wrap": true
+                    },
+                    {
+                        "type": "ColumnSet",
+                        "spacing": "Small",
+                        "columns": [
+                            {
+                                "type": "Column",
+                                "items": [
+                                    {
+                                        "type": "TextBlock",
+                                        "weight": "Bolder",
+                                        "text": "Markus Mclver | Virtuoso",
+                                        "wrap": true
+                                    },
+                                    {
+                                        "type": "TextBlock",
+                                        "spacing": "None",
+                                        "text": "Created: February 9th 2026 at 1:01PM",
+                                        "isSubtle": true,
+                                        "wrap": true
+                                    }
+                                ],
+                                "width": "stretch"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Container",
+                        "spacing": "Small",
+                        "style": "emphasis",
+                        "items": [
+                            {
+                                "type": "ColumnSet",
+                                "columns": [
+                                    {
+                                        "type": "Column",
+                                        "items": [
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "Ticket Type:",
+                                                "weight": "Bolder",
+                                                "spacing": "None"
+                                            },
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "Status:",
+                                                "weight": "Bolder",
+                                                "spacing": "None"
+                                            },
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "Team:",
+                                                "weight": "Bolder",
+                                                "spacing": "None"
+                                            },
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "Agent:",
+                                                "weight": "Bolder",
+                                                "spacing": "None"
+                                            }
+                                        ],
+                                        "width": "stretch",
+                                        "verticalContentAlignment": "Center"
+                                    },
+                                    {
+                                        "type": "Column",
+                                        "items": [
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "Task",
+                                                "spacing": "None"
+                                            },
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "In Progress",
+                                                "spacing": "None"
+                                            },
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "Projects",
+                                                "spacing": "None"
+                                            },
+                                            {
+                                                "type": "TextBlock",
+                                                "text": "Jacob Newman",
+                                                "spacing": "None"
+                                            }
+                                        ],
+                                        "width": "stretch"
+                                    }
+                                ],
+                                "spacing": "None"
+                            },
+                            {
+                                "type": "TextBlock",
+                                "text": "Description:",
+                                "wrap": true,
+                                "weight": "Bolder"
+                            },
+                            {
+                                "type": "Container",
+                                "style": "default",
+                                "items": [
+                                    {
+                                        "type": "RichTextBlock",
+                                        "inlines": [
+                                            {
+                                                "type": "TextRun",
+                                                "text": "From: Markus McIver <markus.mciver@virtuoso.tech>Sent: 08 February 2026 22:52To: Connor Fagan <Connor@Renada.co.uk>; Jacob Newman <Jacob@Renada.co.uk>Cc: Micah Roth <micah.roth@virtuoso.tech>; Sebastian Payas <sebastian.payas@virtuoso.tech>Subject: MS Teams Notifications for On-call engineer  Hi Connor/Jacob – one task that would be good to get a grasp on fairly urgently is sending notifications for new tickets/alerts out of hours just to oncall engineer. I see there was some recent functionality added to Halo around this. \r\n \r\nWe use MS shifts – and these are sync’d in Halo shifts. Is there a way to send notifications based on Halo Shift? Ideally via Teams? If so can we add a task for your guys to setup please? \r\n \r\n\r\nMarkus McIver\r\n​​​​\r\nChief Executive Officer\r\n|\r\nVirtuoso\r\nP: 0800 122 599\r\n|\r\nM: +64 27 257 1916\r\nE: markus.mciver@virtuoso.tech\r\n|\r\n W: virtuoso.tech\r\nA: 8B/331 Rosedale Road, Albany\r\n, \r\nAuckland\r\n, \r\n0632\r\n, \r\nNew Zealand\r\n\r\n\r\n\r\n|\r\n\r\n​Chat with me on Teams \r\nThis email and any files transmitted with it are confidential and intended solely for the use of the individual or entity to whom they are addressed.​If you have received this email in error please notify the system manager. This message contains confidential information and is intended only for​the individual named. If you are not the named addressee you should not disseminate, distribute or copy this e-mail. Please notify the sender​immediately by e-mail if you have received this e-mail by mistake and delete this e-mail from your system. If you are not the intended recipient​you are notified that disclosing, copying, distributing or taking any action in reliance on the contents of this information is strictly prohibited.\r\n "
+                                            }
+                                        ],
+                                        "spacing": "None"
+                                    }
+                                ],
+                                "spacing": "None"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "Available Actions:",
+                        "weight": "Bolder",
+                        "wrap": true,
+                        "spacing": "Medium"
+                    },
+                    {
+                        "type": "ActionSet",
+                        "spacing": "Small",
+                        "actions": [
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Do Later...",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=192",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Requires Review",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=168",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Update Task",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=167",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Transcribe Meeting",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=209",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Follow Up",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=119",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Re-Assign",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=11",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Create Task ",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=71",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Internal Meeting",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=161",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Complete Task",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=101",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Complete Call",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=195",
+                                "style": "positive"
+                            },
+                            {
+                                "type": "Action.OpenUrl",
+                                "title": "Log Bug",
+                                "url": "https://halo.renada.co.uk/ticket?id=10066&newaction=96",
+                                "style": "positive"
+                            }
+                        ]
+                    }
+                ],
+                "speak": "MS Teams Notifications for On-call engineer"
+            }
+        }
+    ]
+}
