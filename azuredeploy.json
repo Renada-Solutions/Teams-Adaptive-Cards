@@ -2,7 +2,7 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "metadata": {
-        "description": "Deploys the HaloPSA Teams Notification Bot — Azure Function App, Bot Service, and Teams channel."
+        "description": "Deploys the HaloPSA Teams Notification Bot infrastructure — Azure Function App, Bot Service, and Teams channel. Code is deployed separately via GitHub Actions."
     },
     "parameters": {
         "appName": {
@@ -23,20 +23,6 @@
             "type": "securestring",
             "metadata": {
                 "description": "Client secret value from your Azure AD App Registration."
-            }
-        },
-        "repoUrl": {
-            "type": "string",
-            "defaultValue": "https://github.com/Renada-Solutions/Teams-Adaptive-Cards",
-            "metadata": {
-                "description": "GitHub repository URL containing the bot code."
-            }
-        },
-        "repoBranch": {
-            "type": "string",
-            "defaultValue": "main",
-            "metadata": {
-                "description": "GitHub branch to deploy from."
             }
         }
     },
@@ -132,20 +118,6 @@
                         }
                     ]
                 }
-            }
-        },
-        {
-            "type": "Microsoft.Web/sites/sourcecontrols",
-            "apiVersion": "2023-12-01",
-            "name": "[concat(parameters('appName'), '/web')]",
-            "location": "[resourceGroup().location]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
-            ],
-            "properties": {
-                "repoUrl": "[parameters('repoUrl')]",
-                "branch": "[parameters('repoBranch')]",
-                "isManualIntegration": true
             }
         },
         {

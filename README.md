@@ -44,9 +44,9 @@ This must be done before deploying — ARM templates cannot create app registrat
 7. Set a description (e.g. `bot-secret`) and expiry, then click **Add**
 8. **Copy the secret Value immediately** (it won't be shown again) — you'll need this as `microsoftAppPassword`
 
-### Step 2: Deploy to Azure
+### Step 2: Deploy Infrastructure to Azure
 
-Click the button below to deploy all Azure resources automatically:
+Click the button below to deploy the empty Azure resources (Function App, Storage, Bot Service, Teams channel). Code is deployed in Step 3 via GitHub Actions.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FRenada-Solutions%2FTeams-Adaptive-Cards%2Fmain%2Fazuredeploy.json)
 
@@ -54,25 +54,34 @@ Fill in the deployment form:
 
 | Parameter | Description |
 |-----------|-------------|
-| **App Name** | Globally unique name (e.g. `haloxteams`). Becomes the Function App hostname. |
+| **App Name** | Globally unique name (e.g. `haloxteams`). Becomes the Function App hostname. Must match the `AZURE_FUNCTIONAPP_NAME` value in `.github/workflows/deploy-function-app.yml`. |
 | **Microsoft App Id** | Application (Client) ID from Step 1 |
 | **Microsoft App Password** | Client secret value from Step 1 |
-| **Repo Url** | Your GitHub repo URL (pre-filled) |
-| **Repo Branch** | Branch to deploy from (default: `main`) |
 
-Click **Review + create** → **Create**. Deployment takes 3-5 minutes.
+Click **Review + create** → **Create**. Deployment takes 1-2 minutes.
 
-### Step 3: Get Deployment Outputs
-
-After deployment completes, go to **Resource Group** → **Deployments** → click the deployment → **Outputs**:
+After deployment, go to **Resource Group** → **Deployments** → click the deployment → **Outputs**:
 
 | Output | Use it for |
 |--------|-----------|
 | **webhookUrl** | HaloPSA Custom Integration endpoint URL |
 | **microsoftAppId** | Teams manifest `id` and `botId` fields |
-| **teamsManifestInstructions** | Summary of Teams app setup steps |
 
 To retrieve the auto-generated `NOTIFY_SECRET`: go to the **Function App** → **Configuration** → **Application settings** → **NOTIFY_SECRET**.
+
+### Step 3: Deploy Code via GitHub Actions
+
+The code lives in `bot/` and is deployed by [.github/workflows/deploy-function-app.yml](.github/workflows/deploy-function-app.yml) on every push to `main`.
+
+1. **Get the publish profile** for the Function App:
+   - Azure Portal → Function App `haloxteams` → **Overview** → **Get publish profile** (downloads a `.PublishSettings` file)
+2. **Add it as a GitHub secret**:
+   - GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+   - Name: `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`
+   - Value: the entire contents of the `.PublishSettings` file
+3. **Trigger a deploy** — push any change to `bot/**`, or run the workflow manually via the **Actions** tab → **Deploy Function App** → **Run workflow**.
+
+If you fork this repo and use a different Function App name, update `AZURE_FUNCTIONAPP_NAME` in the workflow file.
 
 ### Step 4: Create & Install the Teams App
 
@@ -138,8 +147,9 @@ curl -X POST https://YOUR-APP.azurewebsites.net/api/notify \
 ## Project Structure
 
 ```
-├── azuredeploy.json              # ARM template (Deploy to Azure button)
-├── .deployment                   # Tells Kudu to deploy from bot/ subfolder
+├── azuredeploy.json              # ARM template — infrastructure only (Deploy to Azure button)
+├── .github/workflows/
+│   └── deploy-function-app.yml   # GitHub Actions: builds and deploys bot/ to the Function App
 ├── infra/                        # Bicep source templates
 │   ├── main.bicep
 │   └── modules/

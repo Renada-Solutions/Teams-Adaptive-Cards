@@ -18,12 +18,6 @@ param microsoftAppTenantId string
 @description('Shared secret for authenticating HaloPSA webhook calls. Auto-generated if left blank.')
 param notifySecret string = newGuid()
 
-@description('GitHub repository URL containing the bot code')
-param repoUrl string = 'https://github.com/YOUR_ORG/YOUR_REPO'
-
-@description('GitHub branch to deploy from')
-param repoBranch string = 'main'
-
 // --- Function App Module ---
 module functionApp 'modules/functionApp.bicep' = {
   name: 'functionApp'
@@ -34,8 +28,6 @@ module functionApp 'modules/functionApp.bicep' = {
     microsoftAppPassword: microsoftAppPassword
     microsoftAppTenantId: microsoftAppTenantId
     notifySecret: notifySecret
-    repoUrl: repoUrl
-    repoBranch: repoBranch
   }
 }
 

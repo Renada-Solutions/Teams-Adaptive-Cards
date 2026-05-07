@@ -18,12 +18,6 @@ param microsoftAppTenantId string
 @description('Shared secret for authenticating HaloPSA webhook calls (Bearer token)')
 param notifySecret string
 
-@description('GitHub repository URL containing the bot code')
-param repoUrl string
-
-@description('GitHub branch to deploy from')
-param repoBranch string
-
 // --- Storage Account (required by Azure Functions) ---
 var storageAccountName = replace(toLower('st${appName}'), '-', '')
 var truncatedStorageName = length(storageAccountName) > 24 ? substring(storageAccountName, 0, 24) : storageAccountName
@@ -108,17 +102,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
       ]
     }
-  }
-}
-
-// --- Source Control Deployment from GitHub ---
-resource sourceControl 'Microsoft.Web/sites/sourcecontrols@2023-12-01' = {
-  parent: functionApp
-  name: 'web'
-  properties: {
-    repoUrl: repoUrl
-    branch: repoBranch
-    isManualIntegration: true
   }
 }
 
