@@ -25,20 +25,6 @@
                 "description": "Client secret value from your Azure AD App Registration."
             }
         },
-        "microsoftAppTenantId": {
-            "type": "string",
-            "defaultValue": "[subscription().tenantId]",
-            "metadata": {
-                "description": "Directory (Tenant) ID. Defaults to the current subscription's tenant — only override if your App Registration is in a different tenant."
-            }
-        },
-        "notifySecret": {
-            "type": "securestring",
-            "defaultValue": "",
-            "metadata": {
-                "description": "Shared secret for authenticating HaloPSA webhook calls (Bearer token). Leave blank to auto-generate."
-            }
-        },
         "repoUrl": {
             "type": "string",
             "defaultValue": "https://github.com/Renada-Solutions/Teams-Adaptive-Cards",
@@ -57,7 +43,7 @@
     "variables": {
         "storageAccountName": "[take(replace(replace(toLower(concat('st', parameters('appName'))), '-', ''), '_', ''), 24)]",
         "planName": "[concat(parameters('appName'), '-plan')]",
-        "effectiveNotifySecret": "[if(empty(parameters('notifySecret')), guid(resourceGroup().id, 'notifySecret'), parameters('notifySecret'))]"
+        "notifySecret": "[guid(resourceGroup().id, 'notifySecret')]"
     },
     "resources": [
         {
@@ -95,8 +81,14 @@
             ],
             "properties": {
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
+                "httpsOnly": true,
                 "siteConfig": {
-                    "nodeVersion": "~20",
+                    "nodeVersion": "~24",
+                    "use32BitWorkerProcess": false,
+                    "ftpsState": "Disabled",
+                    "http20Enabled": true,
+                    "minTlsVersion": "1.3",
+                    "scmMinTlsVersion": "1.3",
                     "appSettings": [
                         {
                             "name": "AzureWebJobsStorage",
@@ -120,7 +112,7 @@
                         },
                         {
                             "name": "WEBSITE_NODE_DEFAULT_VERSION",
-                            "value": "~20"
+                            "value": "~24"
                         },
                         {
                             "name": "PROJECT",
@@ -136,11 +128,11 @@
                         },
                         {
                             "name": "MicrosoftAppTenantId",
-                            "value": "[parameters('microsoftAppTenantId')]"
+                            "value": "[subscription().tenantId]"
                         },
                         {
                             "name": "NOTIFY_SECRET",
-                            "value": "[variables('effectiveNotifySecret')]"
+                            "value": "[variables('notifySecret')]"
                         }
                     ]
                 }
@@ -176,7 +168,7 @@
                 "displayName": "[parameters('appName')]",
                 "endpoint": "[concat('https://', reference(resourceId('Microsoft.Web/sites', parameters('appName'))).defaultHostName, '/api/messages')]",
                 "msaAppId": "[parameters('microsoftAppId')]",
-                "msaAppTenantId": "[parameters('microsoftAppTenantId')]",
+                "msaAppTenantId": "[subscription().tenantId]",
                 "msaAppType": "SingleTenant"
             }
         },

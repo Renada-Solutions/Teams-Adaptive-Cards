@@ -57,8 +57,14 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   kind: 'functionapp'
   properties: {
     serverFarmId: appServicePlan.id
+    httpsOnly: true
     siteConfig: {
-      nodeVersion: '~20'
+      nodeVersion: '~24'
+      use32BitWorkerProcess: false
+      ftpsState: 'Disabled'
+      http20Enabled: true
+      minTlsVersion: '1.3'
+      scmMinTlsVersion: '1.3'
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
@@ -82,7 +88,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~20'
+          value: '~24'
         }
         {
           name: 'PROJECT'

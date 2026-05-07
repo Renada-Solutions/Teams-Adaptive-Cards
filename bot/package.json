@@ -2,6 +2,9 @@
     "name": "halopsa-ooh-bot",
     "version": "1.0.0",
     "description": "Teams bot for OOH ticket notifications from HaloPSA",
+    "engines": {
+        "node": ">=24.0.0"
+    },
     "dependencies": {
         "botbuilder": "^4.23.0"
     }

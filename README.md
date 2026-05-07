@@ -21,7 +21,7 @@ HaloPSA Runbook → POST /api/notify → Azure Function App → Teams Channel
 **Azure resources created:**
 - Storage Account (required by Functions)
 - App Service Plan (Consumption/Y1 — free tier)
-- Function App (Node.js 20)
+- Function App (Node.js 24, 64-bit)
 - Azure Bot Service (F0 — free tier)
 - Teams Channel on the Bot
 
@@ -57,8 +57,6 @@ Fill in the deployment form:
 | **App Name** | Globally unique name (e.g. `mycompany-ooh-bot`). Becomes the Function App hostname. |
 | **Microsoft App Id** | Application (Client) ID from Step 1 |
 | **Microsoft App Password** | Client secret value from Step 1 |
-| **Microsoft App Tenant Id** | Auto-detected from your subscription. Only override if your App Registration lives in a different tenant. |
-| **Notify Secret** | Leave blank to auto-generate (recommended), or set your own Bearer token |
 | **Repo Url** | Your GitHub repo URL (pre-filled) |
 | **Repo Branch** | Branch to deploy from (default: `main`) |
 
@@ -74,7 +72,7 @@ After deployment completes, go to **Resource Group** → **Deployments** → cli
 | **microsoftAppId** | Teams manifest `id` and `botId` fields |
 | **teamsManifestInstructions** | Summary of Teams app setup steps |
 
-To retrieve the `NOTIFY_SECRET` (if auto-generated): go to the **Function App** → **Configuration** → **Application settings** → **NOTIFY_SECRET**.
+To retrieve the auto-generated `NOTIFY_SECRET`: go to the **Function App** → **Configuration** → **Application settings** → **NOTIFY_SECRET**.
 
 ### Step 4: Create & Install the Teams App
 
