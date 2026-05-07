@@ -21,7 +21,7 @@ HaloPSA Runbook → POST /api/notify → Azure Function App → Teams Channel
 **Azure resources created:**
 - Storage Account (required by Functions)
 - App Service Plan (Consumption/Y1 — free tier)
-- Function App (Linux Flex Consumption, Node.js 24)
+- Function App (Linux Consumption, Node.js 24)
 - Azure Bot Service (F0 — free tier)
 - Teams Channel on the Bot
 
@@ -46,7 +46,7 @@ This must be done before deploying — ARM templates cannot create app registrat
 
 ### Step 2: Deploy to Azure
 
-Click the button below. ARM provisions all the resources **and** runs a one-time helper script that downloads the latest bot package from this repo's GitHub releases and uploads it into your Function App's storage. After deployment finishes, the bot is fully self-contained in your subscription — no further GitHub dependency.
+Click the button below. ARM provisions all the resources and configures the Function App to load its code from this repo's latest GitHub release on cold start. No publish profiles, secrets, or follow-up steps required.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FRenada-Solutions%2FTeams-Adaptive-Cards%2Fmain%2Fazuredeploy.json)
 
