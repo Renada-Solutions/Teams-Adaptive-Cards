@@ -117,7 +117,7 @@
                             "type": "blobContainer",
                             "value": "[concat('https://', variables('storageAccountName'), '.blob.', environment().suffixes.storage, '/', variables('deploymentContainerName'))]",
                             "authentication": {
-                                "type": "StorageAccountConnectionStringFromAppSetting",
+                                "type": "StorageAccountConnectionString",
                                 "storageAccountConnectionStringName": "AzureWebJobsStorage"
                             }
                         }

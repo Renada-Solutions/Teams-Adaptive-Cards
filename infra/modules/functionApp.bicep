@@ -100,7 +100,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           type: 'blobContainer'
           value: 'https://${storageAccount.name}.blob.${environment().suffixes.storage}/${deploymentContainerName}'
           authentication: {
-            type: 'StorageAccountConnectionStringFromAppSetting'
+            type: 'StorageAccountConnectionString'
             storageAccountConnectionStringName: 'AzureWebJobsStorage'
           }
         }
