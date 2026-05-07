@@ -18,9 +18,15 @@ param microsoftAppTenantId string
 @description('Shared secret for authenticating HaloPSA webhook calls (Bearer token)')
 param notifySecret string
 
-var deploymentContainerName = 'deployments'
+@description('URL to the bot.zip package — defaults to the latest GitHub release')
+param packageUrl string = 'https://github.com/Renada-Solutions/Teams-Adaptive-Cards/releases/latest/download/bot.zip'
 
-// --- Storage Account (required by Azure Functions, also hosts deployment artefacts) ---
+var deploymentContainerName = 'deployments'
+var deployIdentityName = '${appName}-deploy-id'
+var deployScriptName = '${appName}-deploy-code'
+var websiteContributorRoleId = 'de139f84-1756-47ae-9be6-808fbbe84772'
+
+// --- Storage Account (function runtime + deployment artefact container) ---
 var storageAccountName = replace(toLower('st${appName}'), '-', '')
 var truncatedStorageName = length(storageAccountName) > 24 ? substring(storageAccountName, 0, 24) : storageAccountName
 
@@ -114,6 +120,64 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         version: '24'
       }
     }
+  }
+}
+
+// --- One-time identity + role + script that pulls the bot package into this Function App ---
+resource deployIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: deployIdentityName
+  location: location
+}
+
+resource deployRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, deployIdentityName, 'WebsiteContributor')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', websiteContributorRoleId)
+    principalId: deployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource deployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: deployScriptName
+  location: location
+  kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${deployIdentity.id}': {}
+    }
+  }
+  dependsOn: [
+    functionApp
+    deployRoleAssignment
+  ]
+  properties: {
+    azCliVersion: '2.61.0'
+    timeout: 'PT15M'
+    retentionInterval: 'P1D'
+    cleanupPreference: 'OnSuccess'
+    environmentVariables: [
+      { name: 'PACKAGE_URL', value: packageUrl }
+      { name: 'RG', value: resourceGroup().name }
+      { name: 'APP_NAME', value: appName }
+    ]
+    scriptContent: '''
+set -e
+echo "Downloading $PACKAGE_URL..."
+curl -L --fail -o /tmp/bot.zip "$PACKAGE_URL"
+ls -la /tmp/bot.zip
+echo "Waiting for Function App to be ready..."
+for i in $(seq 1 30); do
+  STATE=$(az functionapp show --resource-group "$RG" --name "$APP_NAME" --query state -o tsv 2>/dev/null || echo Pending)
+  echo "  state=$STATE (attempt $i)"
+  [ "$STATE" = "Running" ] && break
+  sleep 10
+done
+echo "Deploying package to $APP_NAME..."
+az functionapp deployment source config-zip --resource-group "$RG" --name "$APP_NAME" --src /tmp/bot.zip
+echo "Done."
+'''
   }
 }
 
