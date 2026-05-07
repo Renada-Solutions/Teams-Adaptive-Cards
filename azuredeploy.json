@@ -45,7 +45,7 @@
         },
         "repoUrl": {
             "type": "string",
-            "defaultValue": "https://github.com/YOUR_ORG/YOUR_REPO",
+            "defaultValue": "https://github.com/Renada-Solutions/Teams-Adaptive-Cards",
             "metadata": {
                 "description": "GitHub repository URL containing the bot code."
             }

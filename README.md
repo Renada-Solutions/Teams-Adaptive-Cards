@@ -48,9 +48,7 @@ This must be done before deploying — ARM templates cannot create app registrat
 
 Click the button below to deploy all Azure resources automatically:
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FYOUR_ORG%2FYOUR_REPO%2Fmain%2Fazuredeploy.json)
-
-> **Note:** Update the button URL above with your actual GitHub repository URL after pushing to GitHub.
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FRenada-Solutions%2FTeams-Adaptive-Cards%2Fmain%2Fazuredeploy.json)
 
 Fill in the deployment form:
 
@@ -166,6 +164,20 @@ curl -X POST https://YOUR-APP.azurewebsites.net/api/notify \
 ├── OOHTicketNotification.json    # Adaptive Card template (HaloPSA variables)
 └── test-payload.json             # Sample test payload
 ```
+
+## Card Templates
+
+| File | Purpose |
+|------|---------|
+| `OOHTicketNotification.json` | **Production template.** Adaptive Card with HaloPSA `<<variable!>>` syntax — paste directly into HaloPSA Custom Integration as the card body. |
+| `OOHTicketNotification_Designer.json` | Template for the [Teams Adaptive Card Designer](https://adaptivecards.io/designer/). Uses `${variable}` syntax for live preview in the designer tool. |
+| `OOHTicketNotification_SampleData.json` | Sample data file for use alongside `OOHTicketNotification_Designer.json` in the Adaptive Card Designer. |
+| `TicketNotificationFilled.json` | Fully populated example card — useful for understanding the rendered output without needing a live HaloPSA instance. |
+| `OOHTicketNotification_TeamsWebhook.json` | Variant formatted for direct Teams Incoming Webhook (no bot required). Use this if you want to send cards without the Azure Bot infrastructure. |
+| `MSTeamsCardTemplate.json` | Legacy generic reference card. Kept for historical reference. |
+| `MSTeamsCardTemplateCIPP.json` | CIPP-specific variant card template. Kept for reference if adapting this bot for CIPP integrations. |
+
+---
 
 ## License
 
