@@ -55,7 +55,6 @@ Fill in the deployment form:
 | Parameter | Description |
 |-----------|-------------|
 | **App Name** | Globally unique name (e.g. `mycompany-ooh-bot`). Becomes the Function App hostname. |
-| **Location** | Azure region (e.g. `UK South`, `East US`) |
 | **Microsoft App Id** | Application (Client) ID from Step 1 |
 | **Microsoft App Password** | Client secret value from Step 1 |
 | **Microsoft App Tenant Id** | Directory (Tenant) ID from Step 1 |
