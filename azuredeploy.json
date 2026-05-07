@@ -7,8 +7,10 @@
     "parameters": {
         "appName": {
             "type": "string",
+            "minLength": 2,
+            "maxLength": 40,
             "metadata": {
-                "description": "Base name for all resources (e.g. halopsa-ooh-bot). Must be globally unique as it becomes the Function App hostname."
+                "description": "Base name for all resources (e.g. halopsa-ooh-bot). Must be globally unique as it becomes the Function App hostname. Use only lowercase letters, digits, and hyphens; must start with a letter and end with a letter or digit. Underscores are not allowed."
             }
         },
         "microsoftAppId": {
@@ -25,15 +27,16 @@
         },
         "microsoftAppTenantId": {
             "type": "string",
+            "defaultValue": "[subscription().tenantId]",
             "metadata": {
-                "description": "Directory (Tenant) ID from your Azure AD."
+                "description": "Directory (Tenant) ID. Defaults to the current subscription's tenant — only override if your App Registration is in a different tenant."
             }
         },
         "notifySecret": {
             "type": "securestring",
-            "defaultValue": "[newGuid()]",
+            "defaultValue": "",
             "metadata": {
-                "description": "Shared secret for authenticating HaloPSA webhook calls (Bearer token). Auto-generated if left blank."
+                "description": "Shared secret for authenticating HaloPSA webhook calls (Bearer token). Leave blank to auto-generate."
             }
         },
         "repoUrl": {
@@ -52,8 +55,9 @@
         }
     },
     "variables": {
-        "storageAccountName": "[take(replace(toLower(concat('st', parameters('appName'))), '-', ''), 24)]",
-        "planName": "[concat(parameters('appName'), '-plan')]"
+        "storageAccountName": "[take(replace(replace(toLower(concat('st', parameters('appName'))), '-', ''), '_', ''), 24)]",
+        "planName": "[concat(parameters('appName'), '-plan')]",
+        "effectiveNotifySecret": "[if(empty(parameters('notifySecret')), guid(resourceGroup().id, 'notifySecret'), parameters('notifySecret'))]"
     },
     "resources": [
         {
@@ -104,7 +108,7 @@
                         },
                         {
                             "name": "WEBSITE_CONTENTSHARE",
-                            "value": "[toLower(parameters('appName'))]"
+                            "value": "[toLower(replace(parameters('appName'), '_', '-'))]"
                         },
                         {
                             "name": "FUNCTIONS_EXTENSION_VERSION",
@@ -136,7 +140,7 @@
                         },
                         {
                             "name": "NOTIFY_SECRET",
-                            "value": "[parameters('notifySecret')]"
+                            "value": "[variables('effectiveNotifySecret')]"
                         }
                     ]
                 }

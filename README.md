@@ -57,8 +57,8 @@ Fill in the deployment form:
 | **App Name** | Globally unique name (e.g. `mycompany-ooh-bot`). Becomes the Function App hostname. |
 | **Microsoft App Id** | Application (Client) ID from Step 1 |
 | **Microsoft App Password** | Client secret value from Step 1 |
-| **Microsoft App Tenant Id** | Directory (Tenant) ID from Step 1 |
-| **Notify Secret** | Leave blank to auto-generate, or set your own Bearer token |
+| **Microsoft App Tenant Id** | Auto-detected from your subscription. Only override if your App Registration lives in a different tenant. |
+| **Notify Secret** | Leave blank to auto-generate (recommended), or set your own Bearer token |
 | **Repo Url** | Your GitHub repo URL (pre-filled) |
 | **Repo Branch** | Branch to deploy from (default: `main`) |
 
