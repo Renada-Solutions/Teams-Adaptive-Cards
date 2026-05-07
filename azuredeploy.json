@@ -81,7 +81,7 @@
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
                 "httpsOnly": true,
                 "siteConfig": {
-                    "linuxFxVersion": "NODE|24",
+                    "linuxFxVersion": "NODE|22",
                     "ftpsState": "Disabled",
                     "http20Enabled": true,
                     "minTlsVersion": "1.3",

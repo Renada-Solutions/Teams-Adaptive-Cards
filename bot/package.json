@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "Teams bot for HaloPSA notifications and Adaptive Card actions",
     "engines": {
-        "node": ">=24.0.0"
+        "node": ">=22.0.0"
     },
     "dependencies": {
         "botbuilder": "^4.23.0"
