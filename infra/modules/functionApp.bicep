@@ -37,30 +37,30 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   kind: 'StorageV2'
 }
 
-// --- App Service Plan (Consumption / Y1) ---
+// --- App Service Plan (Linux Consumption / Y1) ---
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${appName}-plan'
   location: location
+  kind: 'linux'
   sku: {
     name: 'Y1'
     tier: 'Dynamic'
   }
   properties: {
-    reserved: false
+    reserved: true
   }
 }
 
-// --- Function App ---
+// --- Function App (Linux) ---
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: appName
   location: location
-  kind: 'functionapp'
+  kind: 'functionapp,linux'
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      nodeVersion: '~24'
-      use32BitWorkerProcess: false
+      linuxFxVersion: 'NODE|24'
       ftpsState: 'Disabled'
       http20Enabled: true
       minTlsVersion: '1.3'
@@ -71,24 +71,12 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
         {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(appName)
-        }
-        {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
         }
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'node'
-        }
-        {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~24'
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'

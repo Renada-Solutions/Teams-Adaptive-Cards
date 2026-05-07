@@ -67,6 +67,7 @@ In Azure Portal → Create a resource → "Function App":
 
 | Field | Value |
 |---|---|
+| Operating System | **Linux** |
 | Runtime stack | **Node.js 24** |
 | Hosting plan | **Consumption (Serverless)** |
 | Region | Same as your other Azure resources |
