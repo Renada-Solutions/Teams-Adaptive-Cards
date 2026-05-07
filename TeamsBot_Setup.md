@@ -39,7 +39,7 @@ The Function App has two HTTP endpoints:
 In Azure Portal → Entra ID → App Registrations:
 
 1. **New registration**
-   - Name: `HaloPSA OOH Bot`
+   - Name: `HaloXTeams`
    - Supported account types: **Single tenant**
    - Redirect URI: leave blank
 2. Note the **Application (client) ID** and **Directory (tenant) ID**
@@ -51,7 +51,7 @@ In Azure Portal → Create a resource → "Azure Bot":
 
 | Field | Value |
 |---|---|
-| Bot handle | `halopsa-ooh-bot` |
+| Bot handle | `haloxteams` |
 | Pricing tier | **F0 (Free)** |
 | Type of App | Single Tenant |
 | App ID | The Application ID from Step 1 |
@@ -124,7 +124,7 @@ Deploy via:
 
 ```json
 {
-  "name": "halopsa-ooh-bot",
+  "name": "haloxteams",
   "version": "1.0.0",
   "dependencies": {
     "botbuilder": "^4.23.0",

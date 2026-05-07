@@ -34,7 +34,7 @@ HaloPSA Runbook → POST /api/notify → Azure Function App → Teams Channel
 This must be done before deploying — ARM templates cannot create app registrations with client secrets.
 
 1. Go to **Azure Portal** → **Microsoft Entra ID** → **App registrations** → **New registration**
-2. Set the name to something like `HaloPSA OOH Bot`
+2. Set the name to something like `HaloXTeams`
 3. Set **Supported account types** to **Accounts in this organizational directory only (Single tenant)**
 4. Click **Register**
 5. On the overview page, copy:
@@ -54,7 +54,7 @@ Fill in the deployment form:
 
 | Parameter | Description |
 |-----------|-------------|
-| **App Name** | Globally unique name (e.g. `mycompany-ooh-bot`). Becomes the Function App hostname. |
+| **App Name** | Globally unique name (e.g. `haloxteams`). Becomes the Function App hostname. |
 | **Microsoft App Id** | Application (Client) ID from Step 1 |
 | **Microsoft App Password** | Client secret value from Step 1 |
 | **Repo Url** | Your GitHub repo URL (pre-filled) |
@@ -79,7 +79,7 @@ To retrieve the auto-generated `NOTIFY_SECRET`: go to the **Function App** → *
 1. Edit [bot/manifest/manifest.json](bot/manifest/manifest.json):
    - Set `"id"` to your **Application (Client) ID**
    - Set `"bots"[0]."botId"` to the same ID
-   - Update `"validDomains"` to your Function App hostname (e.g. `mycompany-ooh-bot.azurewebsites.net`)
+   - Update `"validDomains"` to your Function App hostname (e.g. `haloxteams.azurewebsites.net`)
    - Update `"developer"` fields with your company info
 2. Zip the following files together:
    - `manifest.json`
@@ -93,7 +93,7 @@ To retrieve the auto-generated `NOTIFY_SECRET`: go to the **Function App** → *
 
 Set up a Custom Integration in HaloPSA:
 
-- **URL:** The `webhookUrl` from deployment outputs (e.g. `https://mycompany-ooh-bot.azurewebsites.net/api/notify`)
+- **URL:** The `webhookUrl` from deployment outputs (e.g. `https://haloxteams.azurewebsites.net/api/notify`)
 - **Auth Type:** Bearer Token
 - **Token:** The `NOTIFY_SECRET` value from Function App configuration
 - **Method:** POST

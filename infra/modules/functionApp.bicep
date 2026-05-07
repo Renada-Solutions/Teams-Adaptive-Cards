@@ -1,7 +1,7 @@
 @description('Azure region for all resources')
 param location string
 
-@description('Base name used for all resources (e.g. halopsa-ooh-bot)')
+@description('Base name used for all resources (e.g. haloxteams)')
 param appName string
 
 @description('Application (Client) ID from Azure AD App Registration')
@@ -89,6 +89,14 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'WEBSITE_NODE_DEFAULT_VERSION'
           value: '~24'
+        }
+        {
+          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: 'true'
+        }
+        {
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'true'
         }
         {
           name: 'PROJECT'

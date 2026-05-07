@@ -1,4 +1,4 @@
-@description('Base name for all resources (e.g. halopsa-ooh-bot). Must be globally unique as it becomes the Function App hostname.')
+@description('Base name for all resources (e.g. haloxteams). Must be globally unique as it becomes the Function App hostname.')
 param appName string
 
 @description('Azure region for all resources')

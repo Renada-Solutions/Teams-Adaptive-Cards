@@ -1,7 +1,7 @@
 {
-    "name": "halopsa-ooh-bot",
+    "name": "haloxteams",
     "version": "1.0.0",
-    "description": "Teams bot for OOH ticket notifications from HaloPSA",
+    "description": "Teams bot for HaloPSA notifications and Adaptive Card actions",
     "engines": {
         "node": ">=24.0.0"
     },

@@ -10,7 +10,7 @@
             "minLength": 2,
             "maxLength": 40,
             "metadata": {
-                "description": "Base name for all resources (e.g. halopsa-ooh-bot). Must be globally unique as it becomes the Function App hostname. Use only lowercase letters, digits, and hyphens; must start with a letter and end with a letter or digit. Underscores are not allowed."
+                "description": "Base name for all resources (e.g. haloxteams). Must be globally unique as it becomes the Function App hostname. Use only lowercase letters, digits, and hyphens; must start with a letter and end with a letter or digit. Underscores are not allowed."
             }
         },
         "microsoftAppId": {
@@ -117,6 +117,14 @@
                         {
                             "name": "PROJECT",
                             "value": "bot"
+                        },
+                        {
+                            "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                            "value": "true"
+                        },
+                        {
+                            "name": "ENABLE_ORYX_BUILD",
+                            "value": "true"
                         },
                         {
                             "name": "MicrosoftAppId",
