@@ -18,7 +18,9 @@ param microsoftAppTenantId string
 @description('Shared secret for authenticating HaloPSA webhook calls (Bearer token)')
 param notifySecret string
 
-// --- Storage Account (required by Azure Functions) ---
+var deploymentContainerName = 'deployments'
+
+// --- Storage Account (required by Azure Functions, also hosts deployment artefacts) ---
 var storageAccountName = replace(toLower('st${appName}'), '-', '')
 var truncatedStorageName = length(storageAccountName) > 24 ? substring(storageAccountName, 0, 24) : storageAccountName
 
@@ -29,32 +31,42 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     name: 'Standard_LRS'
   }
   kind: 'StorageV2'
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: false
+  }
 }
 
-// --- App Service Plan (Linux Consumption / Y1) ---
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  name: '${storageAccount.name}/default/${deploymentContainerName}'
+}
+
+// --- App Service Plan (Flex Consumption / FC1) ---
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${appName}-plan'
   location: location
-  kind: 'linux'
+  kind: 'functionapp'
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    tier: 'FlexConsumption'
+    name: 'FC1'
   }
   properties: {
     reserved: true
   }
 }
 
-// --- Function App (Linux) ---
+// --- Function App (Flex Consumption, Linux) ---
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: appName
   location: location
   kind: 'functionapp,linux'
+  dependsOn: [
+    deploymentContainer
+  ]
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'NODE|24'
       ftpsState: 'Disabled'
       http20Enabled: true
       minTlsVersion: '1.3'
@@ -63,26 +75,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'node'
-        }
-        {
-          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
-          value: 'true'
-        }
-        {
-          name: 'ENABLE_ORYX_BUILD'
-          value: 'true'
-        }
-        {
-          name: 'PROJECT'
-          value: 'bot'
         }
         {
           name: 'MicrosoftAppId'
@@ -101,6 +93,26 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: notifySecret
         }
       ]
+    }
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: 'https://${storageAccount.name}.blob.${environment().suffixes.storage}/${deploymentContainerName}'
+          authentication: {
+            type: 'StorageAccountConnectionStringFromAppSetting'
+            storageAccountConnectionStringName: 'AzureWebJobsStorage'
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 40
+        instanceMemoryMB: 2048
+      }
+      runtime: {
+        name: 'node'
+        version: '24'
+      }
     }
   }
 }

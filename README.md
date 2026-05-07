@@ -21,7 +21,7 @@ HaloPSA Runbook → POST /api/notify → Azure Function App → Teams Channel
 **Azure resources created:**
 - Storage Account (required by Functions)
 - App Service Plan (Consumption/Y1 — free tier)
-- Function App (Linux Consumption, Node.js 24)
+- Function App (Linux Flex Consumption, Node.js 24)
 - Azure Bot Service (F0 — free tier)
 - Teams Channel on the Bot
 
