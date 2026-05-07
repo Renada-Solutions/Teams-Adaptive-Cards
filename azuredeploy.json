@@ -153,6 +153,7 @@
             "type": "Microsoft.Web/sites/sourcecontrols",
             "apiVersion": "2023-12-01",
             "name": "[concat(parameters('appName'), '/web')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
             ],
