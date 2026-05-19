@@ -21,7 +21,7 @@ HaloPSA Runbook → POST /api/notify → Azure Function App → Teams Channel
 **Azure resources created:**
 - Storage Account (required by Functions)
 - App Service Plan (Consumption/Y1 — free tier)
-- Function App (Linux Consumption, Node.js 22)
+- Function App (Linux Flex Consumption, Node.js 22)
 - Azure Bot Service (F0 — free tier)
 - Teams Channel on the Bot
 
@@ -44,9 +44,9 @@ This must be done before deploying — ARM templates cannot create app registrat
 7. Set a description (e.g. `bot-secret`) and expiry, then click **Add**
 8. **Copy the secret Value immediately** (it won't be shown again) — you'll need this as `microsoftAppPassword`
 
-### Step 2: Deploy to Azure
+### Step 2: Deploy Infrastructure to Azure
 
-Click the button below. ARM provisions all the resources and configures the Function App to load its code from this repo's latest GitHub release on cold start. No publish profiles, secrets, or follow-up steps required.
+Click the button below. ARM provisions all the resources (Flex Consumption Function App, Bot Service, Teams channel, storage). The Function App is empty after this — code is pushed in Step 3.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FRenada-Solutions%2FTeams-Adaptive-Cards%2Fmain%2Fazuredeploy.json)
 
@@ -57,20 +57,35 @@ Fill in the deployment form:
 | **App Name** | Globally unique name (e.g. `haloxteams`). Becomes the Function App hostname. Use only lowercase letters, digits, and hyphens. |
 | **Microsoft App Id** | Application (Client) ID from Step 1 |
 | **Microsoft App Password** | Client secret value from Step 1 |
-| **Package Url** | Pre-filled — points to the latest `bot.zip` release. Override only if forking this repo. |
 
-Click **Review + create** → **Create**. Deployment takes ~3-5 minutes (longer than infra-only because of the helper script that uploads the code).
+Click **Review + create** → **Create**. Deployment takes ~1-2 minutes.
 
-After deployment, go to **Resource Group** → **Deployments** → click the deployment → **Outputs**:
+After deployment, go to **Resource Group** → **Deployments** → click the deployment → **Outputs**. Copy `deployCommand` — you'll paste it in Step 3.
 
 | Output | Use it for |
 |--------|-----------|
+| **deployCommand** | The command you paste into Cloud Shell in Step 3 |
 | **webhookUrl** | HaloPSA Custom Integration endpoint URL |
 | **microsoftAppId** | Teams manifest `id` and `botId` fields |
 
-To retrieve the auto-generated `NOTIFY_SECRET`: go to the **Function App** → **Configuration** → **Application settings** → **NOTIFY_SECRET**.
+To retrieve the auto-generated `NOTIFY_SECRET`: **Function App** → **Configuration** → **Application settings** → **NOTIFY_SECRET**.
 
-### Step 3: Create & Install the Teams App
+### Step 3: Deploy the Bot Code
+
+Flex Consumption requires code to be uploaded to its deployment blob container — ARM templates can't do this themselves. One copy-paste does it:
+
+1. Open [Azure Cloud Shell](https://shell.azure.com) (Bash). It's browser-based and already authenticated as you — no install needed.
+2. Paste the `deployCommand` value from the deployment outputs and hit Enter. It looks like:
+
+   ```bash
+   curl -L -o bot.zip https://github.com/Renada-Solutions/Teams-Adaptive-Cards/releases/latest/download/bot.zip && az functionapp deployment source config-zip --resource-group <RG> --name <APP> --src bot.zip
+   ```
+
+3. Wait ~60 seconds. When `az` finishes, refresh the Function App overview — `messages` and `notify` will appear and the runtime version will go from `Error` to a real version.
+
+Re-run the same command anytime to pull the latest bot release. No infrastructure redeploy required.
+
+### Step 4: Create & Install the Teams App
 
 1. Edit [bot/manifest/manifest.json](bot/manifest/manifest.json):
    - Set `"id"` to your **Application (Client) ID**

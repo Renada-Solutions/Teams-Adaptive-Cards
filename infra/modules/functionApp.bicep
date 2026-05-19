@@ -18,10 +18,10 @@ param microsoftAppTenantId string
 @description('Shared secret for authenticating HaloPSA webhook calls (Bearer token)')
 param notifySecret string
 
-@description('URL to the bot.zip package — defaults to the latest GitHub release')
-param packageUrl string = 'https://github.com/Renada-Solutions/Teams-Adaptive-Cards/releases/latest/download/bot.zip'
+var deploymentContainerName = 'deployments'
+var packageUrl = 'https://github.com/Renada-Solutions/Teams-Adaptive-Cards/releases/latest/download/bot.zip'
 
-// --- Storage Account (function runtime) ---
+// --- Storage Account (function runtime + deployment blob container) ---
 var storageAccountName = replace(toLower('st${appName}'), '-', '')
 var truncatedStorageName = length(storageAccountName) > 24 ? substring(storageAccountName, 0, 24) : storageAccountName
 
@@ -38,30 +38,36 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
-// --- App Service Plan (Linux Consumption / Y1) ---
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  name: '${storageAccount.name}/default/${deploymentContainerName}'
+}
+
+// --- App Service Plan (Flex Consumption / FC1) ---
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${appName}-plan'
   location: location
-  kind: 'linux'
+  kind: 'functionapp'
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    tier: 'FlexConsumption'
+    name: 'FC1'
   }
   properties: {
     reserved: true
   }
 }
 
-// --- Function App (Linux Consumption, code loaded from packageUrl) ---
+// --- Function App (Flex Consumption, Linux, Node 22) ---
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: appName
   location: location
   kind: 'functionapp,linux'
+  dependsOn: [
+    deploymentContainer
+  ]
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'NODE|22'
       ftpsState: 'Disabled'
       http20Enabled: true
       minTlsVersion: '1.3'
@@ -70,18 +76,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'node'
-        }
-        {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: packageUrl
         }
         {
           name: 'MicrosoftAppId'
@@ -101,6 +95,26 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
       ]
     }
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: 'https://${storageAccount.name}.blob.${environment().suffixes.storage}/${deploymentContainerName}'
+          authentication: {
+            type: 'StorageAccountConnectionString'
+            storageAccountConnectionStringName: 'AzureWebJobsStorage'
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 40
+        instanceMemoryMB: 2048
+      }
+      runtime: {
+        name: 'node'
+        version: '22'
+      }
+    }
   }
 }
 
@@ -108,3 +122,4 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
 output functionAppHostname string = functionApp.properties.defaultHostName
 output messagingEndpoint string = 'https://${functionApp.properties.defaultHostName}/api/messages'
 output webhookEndpoint string = 'https://${functionApp.properties.defaultHostName}/api/notify'
+output deployCommand string = 'curl -L -o bot.zip ${packageUrl} && az functionapp deployment source config-zip --resource-group ${resourceGroup().name} --name ${appName} --src bot.zip'
