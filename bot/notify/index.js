@@ -1,28 +1,11 @@
 const { BotFrameworkAdapter, CardFactory, MessageFactory } = require('botbuilder');
-const fs = require('fs');
-const path = require('path');
+const { load } = require('../lib/conversationStore');
 
 const adapter = new BotFrameworkAdapter({
     appId: process.env.MicrosoftAppId,
     appPassword: process.env.MicrosoftAppPassword,
     channelAuthTenant: process.env.MicrosoftAppTenantId
 });
-
-// Load persisted conversation reference if not in memory
-const refPath = process.env.HOME
-    ? path.join(process.env.HOME, 'data', 'conversationReference.json')
-    : path.join(__dirname, '..', 'conversationReference.json');
-
-function loadConversationReference() {
-    try {
-        if (fs.existsSync(refPath)) {
-            return JSON.parse(fs.readFileSync(refPath, 'utf8'));
-        }
-    } catch (e) {
-        console.error('Failed to load conversation reference:', e.message);
-    }
-    return null;
-}
 
 module.exports = async function (context, req) {
     context.log('Notify endpoint hit');
@@ -35,13 +18,9 @@ module.exports = async function (context, req) {
         return;
     }
 
-    // Try loading from file if not in memory
-    if (!global.conversationReference) {
-        global.conversationReference = loadConversationReference();
-    }
+    const conversationReference = await load();
 
-    // Check conversation reference exists
-    if (!global.conversationReference) {
+    if (!conversationReference) {
         context.res = {
             status: 400,
             body: { error: 'Bot has not been installed in a team yet. No conversation reference stored.' }
@@ -241,7 +220,7 @@ module.exports = async function (context, req) {
     // Send the proactive message
     try {
         await adapter.continueConversation(
-            global.conversationReference,
+            conversationReference,
             async (turnContext) => {
                 const cardAttachment = CardFactory.adaptiveCard(card);
                 const activity = MessageFactory.attachment(cardAttachment);

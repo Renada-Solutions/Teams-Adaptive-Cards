@@ -6,6 +6,7 @@
         "node": ">=22.0.0"
     },
     "dependencies": {
+        "@azure/storage-blob": "^12.27.0",
         "botbuilder": "^4.23.0"
     }
 }

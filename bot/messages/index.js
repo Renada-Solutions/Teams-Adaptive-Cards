@@ -1,39 +1,5 @@
 const { BotFrameworkAdapter, TurnContext } = require('botbuilder');
-const fs = require('fs');
-const path = require('path');
-
-// Persist conversation reference to file so it survives cold starts
-const refPath = process.env.HOME
-    ? path.join(process.env.HOME, 'data', 'conversationReference.json')
-    : path.join(__dirname, '..', 'conversationReference.json');
-
-function loadConversationReference() {
-    try {
-        if (fs.existsSync(refPath)) {
-            return JSON.parse(fs.readFileSync(refPath, 'utf8'));
-        }
-    } catch (e) {
-        console.error('Failed to load conversation reference:', e.message);
-    }
-    return null;
-}
-
-function saveConversationReference(ref) {
-    try {
-        const dir = path.dirname(refPath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        fs.writeFileSync(refPath, JSON.stringify(ref, null, 2));
-    } catch (e) {
-        console.error('Failed to save conversation reference:', e.message);
-    }
-}
-
-// Load on startup
-if (!global.conversationReference) {
-    global.conversationReference = loadConversationReference();
-}
+const { save } = require('../lib/conversationStore');
 
 const adapter = new BotFrameworkAdapter({
     appId: process.env.MicrosoftAppId,
@@ -57,10 +23,10 @@ module.exports = async function (context, req) {
 
             for (const member of membersAdded) {
                 if (member.id === botId) {
-                    global.conversationReference = TurnContext.getConversationReference(turnContext.activity);
-                    saveConversationReference(global.conversationReference);
-                    context.log('Bot installed — conversation reference stored and persisted');
-                    context.log(JSON.stringify(global.conversationReference, null, 2));
+                    const ref = TurnContext.getConversationReference(turnContext.activity);
+                    await save(ref);
+                    context.log('Bot installed — conversation reference saved to blob storage');
+                    context.log(JSON.stringify(ref, null, 2));
                 }
             }
         }
