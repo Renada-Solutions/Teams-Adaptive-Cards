@@ -18,6 +18,9 @@ param microsoftAppTenantId string
 @description('Shared secret for authenticating HaloPSA webhook calls. Auto-generated if left blank.')
 param notifySecret string = newGuid()
 
+@description('Optional Teams channel ID (19:xxxx@thread.tacv2) for Live Chat notifications. Blank posts to the install channel.')
+param chatChannelId string = ''
+
 // --- Function App Module ---
 module functionApp 'modules/functionApp.bicep' = {
   name: 'functionApp'
@@ -28,6 +31,7 @@ module functionApp 'modules/functionApp.bicep' = {
     microsoftAppPassword: microsoftAppPassword
     microsoftAppTenantId: microsoftAppTenantId
     notifySecret: notifySecret
+    chatChannelId: chatChannelId
   }
 }
 

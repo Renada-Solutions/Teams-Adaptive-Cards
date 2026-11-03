@@ -24,6 +24,13 @@
             "metadata": {
                 "description": "Client secret value from your Azure AD App Registration."
             }
+        },
+        "chatChannelId": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Optional. Teams channel ID (19:xxxx@thread.tacv2) for Live Chat notifications. Leave blank to post them in the channel the bot was installed to."
+            }
         }
     },
     "variables": {
@@ -109,6 +116,10 @@
                         {
                             "name": "NOTIFY_SECRET",
                             "value": "[variables('notifySecret')]"
+                        },
+                        {
+                            "name": "CHAT_CHANNEL_ID",
+                            "value": "[parameters('chatChannelId')]"
                         }
                     ]
                 },

@@ -127,6 +127,27 @@ The POST body should include:
 
 The `cardJson` field should contain a fully populated Adaptive Card — see [OOHTicketNotification.json](OOHTicketNotification.json) for the template with HaloPSA variables.
 
+### Live Chat notifications
+
+Add an **Execute a Runbook** step to the chat profile flow (after the initial questions, before Start Live Chat). The runbook POSTs to `/api/chat` with the same Bearer token. The bot builds the card itself, so no `cardJson` is needed.
+
+The body can be either:
+
+- The raw Halo chat object as-is, or
+- A wrapper, if the runbook looks up extra details first:
+
+```json
+{
+    "chat": { },
+    "ticket": { "id": 2146689, "summary": "", "client": "", "status": "", "priority": "", "agent": "" },
+    "agents": [ { "displayName": "Agent Name", "azureId": "their-azure-ad-object-id" } ]
+}
+```
+
+**Channel:** chat cards go to the `CHAT_CHANNEL_ID` app setting (or the `chatChannelId` deployment parameter) if set, otherwise to the channel the bot was installed to. A `channelId` in the body overrides both. To get the ID: in Teams, open the channel's **...** menu > **Get link to channel**, then URL-decode the `19%3a...%40thread.tacv2` part to `19:...@thread.tacv2`. The channel must be in a team the bot is installed in.
+
+All `ticket` fields and `agents` are optional. The ticket shown on the card is picked in this order: `ticket.id` from the runbook, then `ticket_id` on the chat (ticket logged from the chat), then the last end-user message that is only a number (flagged on the card as not validated). Links use the origin of the chat's `user_chat_url`, or the `HALO_URL` app setting if set.
+
 ---
 
 ## Manual Deployment
@@ -166,6 +187,10 @@ curl -X POST https://YOUR-APP.azurewebsites.net/api/notify \
 │   ├── notify/                   # HaloPSA webhook endpoint
 │   │   ├── function.json
 │   │   └── index.js
+│   ├── chat/                     # HaloPSA Live Chat runbook endpoint
+│   │   ├── function.json
+│   │   └── index.js
+│   ├── lib/                      # Shared: conversation store, auth, Teams send
 │   └── manifest/                 # Teams app package
 │       ├── manifest.json
 │       ├── color.png

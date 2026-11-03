@@ -18,6 +18,9 @@ param microsoftAppTenantId string
 @description('Shared secret for authenticating HaloPSA webhook calls (Bearer token)')
 param notifySecret string
 
+@description('Optional Teams channel ID for Live Chat notifications')
+param chatChannelId string = ''
+
 var deploymentContainerName = 'deployments'
 var packageUrl = 'https://github.com/Renada-Solutions/Teams-Adaptive-Cards/releases/latest/download/bot.zip'
 
@@ -92,6 +95,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'NOTIFY_SECRET'
           value: notifySecret
+        }
+        {
+          name: 'CHAT_CHANNEL_ID'
+          value: chatChannelId
         }
       ]
     }

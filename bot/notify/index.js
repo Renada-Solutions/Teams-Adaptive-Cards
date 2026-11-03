@@ -1,30 +1,10 @@
-const { BotFrameworkAdapter, CardFactory, MessageFactory } = require('botbuilder');
-const { load } = require('../lib/conversationStore');
-
-const adapter = new BotFrameworkAdapter({
-    appId: process.env.MicrosoftAppId,
-    appPassword: process.env.MicrosoftAppPassword,
-    channelAuthTenant: process.env.MicrosoftAppTenantId
-});
+const { isAuthorised, addMentions, sendCard } = require('../lib/teams');
 
 module.exports = async function (context, req) {
     context.log('Notify endpoint hit');
 
-    // Verify authorization via Bearer token (configured on HaloPSA Custom Integration)
-    const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (token !== process.env.NOTIFY_SECRET) {
+    if (!isAuthorised(req)) {
         context.res = { status: 401, body: { error: 'Unauthorized' } };
-        return;
-    }
-
-    const conversationReference = await load();
-
-    if (!conversationReference) {
-        context.res = {
-            status: 400,
-            body: { error: 'Bot has not been installed in a team yet. No conversation reference stored.' }
-        };
         return;
     }
 
@@ -169,64 +149,18 @@ module.exports = async function (context, req) {
     // Use full width for the card in Teams
     card.msteams = { ...(card.msteams || {}), width: 'Full' };
 
-    // Build @mentions and inject into the card's msteams.entities
-    if (agents && Array.isArray(agents) && agents.length > 0) {
-        const msteamsEntities = [];
-        const mentionTexts = [];
-
-        agents.forEach((agent) => {
-            msteamsEntities.push({
-                type: 'mention',
-                text: `<at>${agent.displayName}</at>`,
-                mentioned: {
-                    id: agent.azureId,
-                    name: agent.displayName
-                }
-            });
-            mentionTexts.push(`<at>${agent.displayName}</at>`);
-        });
-
-        // Add msteams.entities to the card JSON — Teams resolves these as real @mentions
-        card.msteams = { ...(card.msteams || {}), entities: msteamsEntities };
-
-        // Insert mentions TextBlock after the "agents-on-shift-label" element
-        const mentionBlock = {
-            type: 'TextBlock',
-            text: mentionTexts.join(', '),
-            weight: 'Bolder',
-            wrap: true,
-            spacing: 'None'
-        };
-
-        let inserted = false;
-        if (card.body) {
-            for (const element of card.body) {
-                if (element.items && Array.isArray(element.items)) {
-                    const labelIndex = element.items.findIndex(i => i.id === 'agents-on-shift-label');
-                    if (labelIndex !== -1) {
-                        element.items.splice(labelIndex + 1, 0, mentionBlock);
-                        inserted = true;
-                        break;
-                    }
-                }
-            }
-            // Fallback: prepend to card body if label not found
-            if (!inserted) {
-                card.body.unshift(mentionBlock);
-            }
-        }
-    }
+    addMentions(card, agents);
 
     // Send the proactive message
     try {
-        await adapter.continueConversation(
-            conversationReference,
-            async (turnContext) => {
-                const cardAttachment = CardFactory.adaptiveCard(card);
-                const activity = MessageFactory.attachment(cardAttachment);
-                await turnContext.sendActivity(activity);
-            }
-        );
+        const sent = await sendCard(card);
+        if (!sent) {
+            context.res = {
+                status: 400,
+                body: { error: 'Bot has not been installed in a team yet. No conversation reference stored.' }
+            };
+            return;
+        }
 
         context.log(`Notification sent for ticket ${ticketId}`);
         context.res = { status: 200, body: { success: true, ticketId } };
