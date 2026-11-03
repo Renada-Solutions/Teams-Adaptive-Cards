@@ -14,11 +14,20 @@ function isAuthorised(req) {
     return token !== '' && token === process.env.NOTIFY_SECRET;
 }
 
-// Build @mentions and inject into the card's msteams.entities.
+// Build @mentions (users, Teams tags with type "tag", or channels with type "channel")
+// and inject into the card's msteams.entities.
 // The mention TextBlock goes after the element with id "agents-on-shift-label",
 // or at the top of the card if that label is not found.
+// Drop entries with a blank name or ID (e.g. an unassigned ticket's agent variables),
+// since Teams rejects the whole message if a mention has no ID
+function validMentions(agents) {
+    if (!Array.isArray(agents)) return [];
+    return agents.filter(a => a && String(a.displayName || '').trim() && String(a.azureId || '').trim());
+}
+
 function addMentions(card, agents) {
-    if (!agents || !Array.isArray(agents) || agents.length === 0) return;
+    agents = validMentions(agents);
+    if (agents.length === 0) return;
 
     const msteamsEntities = [];
     const mentionTexts = [];
@@ -29,7 +38,11 @@ function addMentions(card, agents) {
             text: `<at>${agent.displayName}</at>`,
             mentioned: {
                 id: agent.azureId,
-                name: agent.displayName
+                name: agent.displayName,
+                // Teams tag mentions need type "tag" and the tag's Graph ID in azureId.
+                // Channel mentions need type "channel" and the channel ID (19:...@thread.tacv2) in azureId.
+                ...(agent.type === 'tag' ? { type: 'tag' } : {}),
+                ...(agent.type === 'channel' ? { conversationIdentityType: 'channel' } : {})
             }
         });
         mentionTexts.push(`<at>${agent.displayName}</at>`);
@@ -89,4 +102,4 @@ async function sendCard(card, channelId) {
     return true;
 }
 
-module.exports = { isAuthorised, isValidChannelId, addMentions, sendCard };
+module.exports = { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard };

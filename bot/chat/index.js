@@ -1,4 +1,4 @@
-const { isAuthorised, isValidChannelId, addMentions, sendCard } = require('../lib/teams');
+const { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard } = require('../lib/teams');
 
 // Halo chat messages from the bot/flow have sender_id 0; anything else is the end-user
 const isUserMessage = (m) => m && m.sender_id !== 0;
@@ -108,7 +108,6 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
     }
     if (ticket) {
         if (ticket.summary) facts.push({ title: 'Summary:', value: stripHtml(ticket.summary) });
-        if (ticket.client) facts.push({ title: 'Client:', value: ticket.client });
         if (ticket.status) facts.push({ title: 'Status:', value: ticket.status });
         if (ticket.priority) facts.push({ title: 'Priority:', value: ticket.priority });
         if (ticket.agent) facts.push({ title: 'Agent:', value: ticket.agent });
@@ -118,7 +117,7 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
     if (hasAgents) {
         details.push({
             type: 'TextBlock',
-            text: 'Agents on Shift',
+            text: 'Notifying',
             size: 'Small',
             isSubtle: true,
             wrap: true,
@@ -127,17 +126,25 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
         });
     }
 
+    // Transcript gets its own box below the details, so it reads as a separate section
     const transcript = buildTranscript(chat.messages);
-    if (transcript.length) {
-        details.push({
-            type: 'TextBlock',
-            text: 'Chat so far',
-            size: 'Small',
-            isSubtle: true,
-            wrap: true,
-            spacing: 'Medium'
-        }, ...transcript);
-    }
+    const transcriptContainer = transcript.length ? [{
+        type: 'Container',
+        spacing: 'Medium',
+        style: 'emphasis',
+        showBorder: true,
+        roundedCorners: true,
+        id: 'transcript-container',
+        items: [
+            {
+                type: 'TextBlock',
+                text: 'Chat so far',
+                weight: 'Bolder',
+                wrap: true
+            },
+            ...transcript
+        ]
+    }] : [];
 
     const card = {
         type: 'AdaptiveCard',
@@ -152,7 +159,7 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
                         type: 'TextBlock',
                         size: 'Medium',
                         weight: 'Bolder',
-                        text: 'New Live Chat',
+                        text: `New Live Chat - ${userName}${ticket && ticket.client ? ` (${ticket.client})` : ''}`,
                         style: 'heading',
                         wrap: true
                     },
@@ -162,39 +169,14 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
                         isSubtle: true,
                         spacing: 'None',
                         wrap: true
-                    }
-                ]
-            },
-            {
-                type: 'ColumnSet',
-                spacing: 'Small',
-                columns: [
-                    {
-                        type: 'Column',
-                        width: 'stretch',
-                        items: [
-                            {
-                                type: 'TextBlock',
-                                weight: 'Bolder',
-                                text: ticket && ticket.client ? `${userName} | ${ticket.client}` : userName,
-                                wrap: true
-                            },
-                            ...(participant.email ? [{
-                                type: 'TextBlock',
-                                text: participant.email,
-                                isSubtle: true,
-                                spacing: 'None',
-                                wrap: true
-                            }] : []),
-                            ...(started ? [{
-                                type: 'TextBlock',
-                                text: `Started: ${started}`,
-                                isSubtle: true,
-                                spacing: 'None',
-                                wrap: true
-                            }] : [])
-                        ]
-                    }
+                    },
+                    ...(started ? [{
+                        type: 'TextBlock',
+                        text: `Started ${started}`,
+                        isSubtle: true,
+                        spacing: 'None',
+                        wrap: true
+                    }] : [])
                 ]
             },
             {
@@ -203,15 +185,17 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
                 style: 'emphasis',
                 id: 'details-container',
                 items: details
-            }
+            },
+            ...transcriptContainer
         ],
         actions: [],
         msteams: { width: 'Full' },
         speak: `New live chat from ${userName}`
     };
 
+    // "Open Halo" only as a fallback when there is no ticket to link to
     if (ticketUrl) card.actions.push({ type: 'Action.OpenUrl', title: 'View Ticket in Halo', url: ticketUrl });
-    if (baseUrl) card.actions.push({ type: 'Action.OpenUrl', title: 'Open Halo', url: baseUrl });
+    else if (baseUrl) card.actions.push({ type: 'Action.OpenUrl', title: 'Open Halo', url: baseUrl });
 
     return card;
 }
@@ -243,7 +227,7 @@ module.exports = async function (context, req) {
     }
 
     const resolved = resolveTicket(chat, ticket);
-    const hasAgents = Array.isArray(agents) && agents.length > 0;
+    const hasAgents = validMentions(agents).length > 0;
     const card = buildCard(chat, ticket, resolved, haloBaseUrl(chat), hasAgents);
     addMentions(card, agents);
 

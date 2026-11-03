@@ -146,6 +146,8 @@ The body can be either:
 
 **Channel:** chat cards go to the `CHAT_CHANNEL_ID` app setting (or the `chatChannelId` deployment parameter) if set, otherwise to the channel the bot was installed to. A `channelId` in the body overrides both. To get the ID: in Teams, open the channel's **...** menu > **Get link to channel**, then URL-decode the `19%3a...%40thread.tacv2` part to `19:...@thread.tacv2`. The channel must be in a team the bot is installed in.
 
+**Tag mentions:** to @mention a Teams tag (e.g. a support team), add it to `agents` with `"type": "tag"` and the tag's Graph ID in `azureId`: `{ "displayName": "Level 1 Support Team", "azureId": "<tag id>", "type": "tag" }`. Get the ID from `GET https://graph.microsoft.com/v1.0/teams/{team-id}/tags`. Tag mentions only work in standard channels, not private or shared ones. To @mention a channel instead, use `"type": "channel"` with the channel ID (`19:...@thread.tacv2`) in `azureId`.
+
 All `ticket` fields and `agents` are optional. The ticket shown on the card is picked in this order: `ticket.id` from the runbook, then `ticket_id` on the chat (ticket logged from the chat), then the last end-user message that is only a number (flagged on the card as not validated). Links use the origin of the chat's `user_chat_url`, or the `HALO_URL` app setting if set.
 
 ---
