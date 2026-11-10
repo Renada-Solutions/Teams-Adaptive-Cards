@@ -146,7 +146,7 @@ The body can be either:
 
 **Channel:** chat cards go to the `CHAT_CHANNEL_ID` app setting (or the `chatChannelId` deployment parameter) if set, otherwise to the channel the bot was installed to. A `channelId` in the body overrides both. To get the ID: in Teams, open the channel's **...** menu > **Get link to channel**, then URL-decode the `19%3a...%40thread.tacv2` part to `19:...@thread.tacv2`. The channel must be in a team the bot is installed in.
 
-**Tag mentions:** to @mention a Teams tag (e.g. a support team), add it to `agents` with `"type": "tag"` and the tag's full Graph ID in `azureId`: `{ "displayName": "Level 1 Support Team", "azureId": "<tag id>", "type": "tag" }`. The full ID is base64 of `{teamId}##{tenantId}##{shortTagId}`; get it from `GET https://graph.microsoft.com/v1.0/teams/{team-id}/tags`, or build it from the short ID. Tag mentions only work in standard channels, not private or shared ones.
+**Tag mentions:** to @mention a Teams tag (e.g. a support team), add it to `agents` with `"type": "tag"` and the tag's full Graph ID in `azureId`: `{ "displayName": "Level 1 Support Team", "azureId": "<tag id>", "type": "tag" }`. Use the `id` exactly as Graph returns it from `GET https://graph.microsoft.com/v1.0/teams/{team-id}/tags` (or the Power Automate Teams action "List all tags for a team", which needs no admin consent). It is base64 of `{tenantId}##{teamId}##{shortTagId}`. Tag mentions only work in standard channels, not private or shared ones.
 
 All `ticket` fields and `agents` are optional. The ticket shown on the card is picked in this order: `ticket.id` from the runbook, then `ticket_id` on the chat (ticket logged from the chat), then the last end-user message that is only a number (flagged on the card as not validated). Links use the origin of the chat's `user_chat_url`, or the `HALO_URL` app setting if set.
 
@@ -156,7 +156,22 @@ All `ticket` fields and `agents` are optional. The ticket shown on the card is p
 { "event": "agentJoined", "chatId": 1982, "agentName": "Agent Name" }
 ```
 
+If the webhook body also carries the full chat as `chatDetails` (as the HaloPSA webhook can be set up to send), the agent's name comes from its `participants`, and "Chat so far" is rebuilt from it every time a newer copy arrives (by `last_message_id`): flow answers, live messages from the user and agents (agents highlighted), and system events such as "joined the chat". Only the last 20 entries are shown.
+
+"Chat so far" is posted as a single reply in the card's thread when the card is sent, then edited in place rather than adding a reply per message, so thread followers (including anyone @mentioned on the card) aren't notified for every chat message. The card's start time uses Adaptive Card `DATE()`/`TIME()` functions, so each viewer sees it in their own time zone.
+
 The bot edits the original card to show "Agent joined: Agent Name" with a green header. If the edit fails it replies in the card's thread instead. Only the first agent message per chat does anything; user messages (`agent_id` 0) and chats with no card are ignored with a 200 so Halo doesn't count them as failures.
+
+**Management escalation:** add `escalation` to the start runbook's body to escalate when no agent responds in time. The threshold can come from a Halo variable, so it can differ by client or priority:
+
+```json
+"escalation": {
+    "afterMinutes": 5,
+    "agents": [ { "displayName": "UKTSMgmt", "azureId": "<tag id>", "type": "tag" } ]
+}
+```
+
+The `escalate` timer function runs every minute. If no agent message has arrived `afterMinutes` after the card was posted, it posts a reply in the card's thread @mentioning `agents` and turns the card's header red ("No response after 5 min - escalated"). An agent responding later turns it green as usual. Each chat is escalated at most once; an agent responding (or the chat closing, if the webhook sends all messages) cancels it. Without `escalation` nothing changes.
 
 **Installing in more teams:** the bot keeps one stored conversation reference, replaced each time it is installed in a team. Set `NOTIFY_CHANNEL_ID` (OOH alerts) and `CHAT_CHANNEL_ID` (chat alerts) so a new install doesn't move either. Tag mentions only resolve when the bot is installed in the team that owns the tags.
 
@@ -201,10 +216,13 @@ curl -X POST https://YOUR-APP.azurewebsites.net/api/notify \
 │   ├── notify/                   # HaloPSA webhook endpoint
 │   │   ├── function.json
 │   │   └── index.js
-│   ├── chat/                     # HaloPSA Live Chat runbook endpoint
+│   ├── chat/                     # HaloPSA Live Chat runbook/webhook endpoint
 │   │   ├── function.json
 │   │   └── index.js
-│   ├── lib/                      # Shared: conversation store, auth, Teams send
+│   ├── escalate/                 # Timer (every minute): management escalation for unanswered chats
+│   │   ├── function.json
+│   │   └── index.js
+│   ├── lib/                      # Shared: conversation/chat stores, chat cards, auth, Teams send
 │   └── manifest/                 # Teams app package
 │       ├── manifest.json
 │       ├── color.png

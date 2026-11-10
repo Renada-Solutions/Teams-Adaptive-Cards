@@ -127,11 +127,43 @@ async function updateCard(conversationId, activityId, card) {
     });
 }
 
+// A channel message's thread is addressed as <channel>;messageid=<root message id>
+const threadId = (conversationId, activityId) => `${conversationId};messageid=${activityId}`;
+
 // Reply in the thread under a message the bot sent earlier
 async function replyInThread(conversationId, activityId, text) {
-    return withConversation(`${conversationId};messageid=${activityId}`, async (turnContext) => {
+    return withConversation(threadId(conversationId, activityId), async (turnContext) => {
         await turnContext.sendActivity(MessageFactory.text(text));
     });
 }
 
-module.exports = { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard, updateCard, replyInThread };
+// Post a card as a reply in a thread. Returns the reply's activity ID so it can be edited later.
+async function sendCardInThread(conversationId, activityId, card) {
+    let replyId = null;
+    await withConversation(threadId(conversationId, activityId), async (turnContext) => {
+        const response = await turnContext.sendActivity(MessageFactory.attachment(CardFactory.adaptiveCard(card)));
+        replyId = response && response.id;
+    });
+    return replyId;
+}
+
+// Replace a card the bot posted as a thread reply
+async function updateCardInThread(conversationId, activityId, replyId, card) {
+    return withConversation(threadId(conversationId, activityId), async (turnContext) => {
+        const activity = MessageFactory.attachment(CardFactory.adaptiveCard(card));
+        activity.id = replyId;
+        await turnContext.updateActivity(activity);
+    });
+}
+
+// Teams rejects a whole message if a tag mention is invalid ("Mentioned Tag with id ... does not exist
+// in current Team"). Only that error should make a caller retry without tags; anything else
+// (e.g. a transient outage) is a real failure.
+function isTagMentionError(error) {
+    return /mentioned tag/i.test((error && error.message) || '');
+}
+
+module.exports = {
+    isAuthorised, isValidChannelId, validMentions, addMentions, isTagMentionError,
+    sendCard, updateCard, replyInThread, sendCardInThread, updateCardInThread
+};

@@ -1,215 +1,20 @@
-const { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard, updateCard, replyInThread } = require('../lib/teams');
-const { getChat, saveChat } = require('../lib/chatStore');
+const {
+    isAuthorised, isValidChannelId, isTagMentionError,
+    sendCard, updateCard, replyInThread, sendCardInThread, updateCardInThread
+} = require('../lib/teams');
+const { getChat, saveChat, addPending, removePending } = require('../lib/chatStore');
+const { agentNameFrom, buildTranscriptCard, cardFromPayload, resolveTicket } = require('../lib/chatCard');
 
-// Halo chat messages from the bot/flow have sender_id 0; anything else is the end-user
-const isUserMessage = (m) => m && m.sender_id !== 0;
-
-function stripHtml(text) {
-    if (!text || typeof text !== 'string') return '';
-    return text
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ')
-        .trim();
-}
-
-function truncate(text, max) {
-    return text.length > max ? text.slice(0, max - 3) + '...' : text;
-}
-
-// Halo returns timestamps without a zone; treat them as UTC and show UK time
-function formatTimestamp(ts) {
-    if (!ts) return '';
-    const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(ts) ? ts : ts + 'Z');
-    if (isNaN(date)) return '';
-    return date.toLocaleString('en-GB', {
-        timeZone: 'Europe/London',
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-    });
-}
-
-function haloBaseUrl(chat) {
-    if (process.env.HALO_URL) return process.env.HALO_URL.replace(/\/+$/, '');
-    try {
-        return new URL(chat.user_chat_url).origin;
-    } catch {
-        return null;
+// Optional escalation from the start runbook: { afterMinutes: 1-1440, agents: [mentions] }.
+// Returns null if absent; { warning } if present but unusable (e.g. a blank Halo variable),
+// which skips escalation but still posts the chat card.
+function parseEscalation(escalation) {
+    if (!escalation) return null;
+    const afterMinutes = Number(escalation.afterMinutes);
+    if (!(afterMinutes >= 1 && afterMinutes <= 1440)) {
+        return { warning: `Escalation skipped: afterMinutes "${escalation.afterMinutes}" is not a number from 1 to 1440` };
     }
-}
-
-// Work out which ticket the chat is about, in order of trust:
-// 1. ticket.id supplied by the runbook (validated there)
-// 2. ticket_id on the chat (ticket logged from the chat)
-// 3. the last end-user message that is just a number (typed in the flow)
-function resolveTicket(chat, ticket) {
-    if (ticket && ticket.id) return { id: String(ticket.id), source: 'existing ticket' };
-    if (chat.ticket_id > 0) return { id: String(chat.ticket_id), source: 'logged from chat' };
-
-    const typed = (chat.messages || [])
-        .filter(isUserMessage)
-        .map(m => (m.text || '').match(/^\s*#?(\d{1,10})\s*$/))
-        .filter(Boolean)
-        .pop();
-    if (typed) return { id: typed[1], source: 'entered by user, not validated' };
-
-    return null;
-}
-
-// Pair each end-user answer with the flow question that preceded it
-function buildTranscript(messages) {
-    const items = [];
-    let lastQuestion = '';
-    for (const m of messages || []) {
-        if (!isUserMessage(m)) {
-            lastQuestion = stripHtml(m.text);
-            continue;
-        }
-        items.push(
-            {
-                type: 'TextBlock',
-                text: truncate(lastQuestion || 'Message', 200),
-                size: 'Small',
-                isSubtle: true,
-                wrap: true,
-                spacing: 'Small'
-            },
-            {
-                type: 'TextBlock',
-                text: truncate(stripHtml(m.text), 500),
-                weight: 'Bolder',
-                wrap: true,
-                spacing: 'None'
-            }
-        );
-        lastQuestion = '';
-    }
-    return items;
-}
-
-// joined: { agentName } once an agent has joined the chat, otherwise null
-function buildCard(chat, ticket, resolved, baseUrl, hasAgents, joined) {
-    const participant = chat.other_participant || (chat.participants || [])[0] || {};
-    const userName = participant.name || chat.display_name || 'Unknown user';
-    const started = formatTimestamp((chat.messages || [])[0]?.timestamp);
-    const ticketUrl = resolved && baseUrl ? `${baseUrl}/ticket?id=${resolved.id}` : null;
-
-    let chatState = chat.livechat_started ? '' : ' | Waiting for an agent';
-    if (joined) chatState = joined.agentName ? ` | Agent joined: ${joined.agentName}` : ' | Agent joined';
-
-    const facts = [];
-    if (resolved) {
-        facts.push({
-            title: 'Ticket:',
-            value: ticketUrl ? `[#${resolved.id}](${ticketUrl}) (${resolved.source})` : `#${resolved.id} (${resolved.source})`
-        });
-    } else {
-        facts.push({ title: 'Ticket:', value: 'None linked' });
-    }
-    if (ticket) {
-        if (ticket.summary) facts.push({ title: 'Summary:', value: stripHtml(ticket.summary) });
-        if (ticket.status) facts.push({ title: 'Status:', value: ticket.status });
-        if (ticket.priority) facts.push({ title: 'Priority:', value: ticket.priority });
-        if (ticket.agent) facts.push({ title: 'Agent:', value: ticket.agent });
-    }
-
-    const details = [{ type: 'FactSet', facts }];
-    if (hasAgents) {
-        details.push({
-            type: 'TextBlock',
-            text: 'Notifying',
-            size: 'Small',
-            isSubtle: true,
-            wrap: true,
-            spacing: 'Medium',
-            id: 'agents-on-shift-label'
-        });
-    }
-
-    // Transcript gets its own box below the details, so it reads as a separate section
-    const transcript = buildTranscript(chat.messages);
-    const transcriptContainer = transcript.length ? [{
-        type: 'Container',
-        spacing: 'Medium',
-        style: 'emphasis',
-        showBorder: true,
-        roundedCorners: true,
-        id: 'transcript-container',
-        items: [
-            {
-                type: 'TextBlock',
-                text: 'Chat so far',
-                weight: 'Bolder',
-                wrap: true
-            },
-            ...transcript
-        ]
-    }] : [];
-
-    const card = {
-        type: 'AdaptiveCard',
-        $schema: 'https://adaptivecards.io/schemas/adaptive-card.json',
-        version: '1.5',
-        body: [
-            {
-                type: 'Container',
-                style: joined ? 'good' : 'accent',
-                items: [
-                    {
-                        type: 'TextBlock',
-                        size: 'Medium',
-                        weight: 'Bolder',
-                        text: `New Live Chat - ${userName}${ticket && ticket.client ? ` (${ticket.client})` : ''}`,
-                        style: 'heading',
-                        wrap: true
-                    },
-                    {
-                        type: 'TextBlock',
-                        text: `Chat #${chat.id}${chatState}`,
-                        isSubtle: true,
-                        spacing: 'None',
-                        wrap: true
-                    },
-                    ...(started ? [{
-                        type: 'TextBlock',
-                        text: `Started ${started}`,
-                        isSubtle: true,
-                        spacing: 'None',
-                        wrap: true
-                    }] : [])
-                ]
-            },
-            {
-                type: 'Container',
-                spacing: 'Small',
-                style: 'emphasis',
-                id: 'details-container',
-                items: details
-            },
-            ...transcriptContainer
-        ],
-        actions: [],
-        msteams: { width: 'Full' },
-        speak: `New live chat from ${userName}`
-    };
-
-    // "Open Halo" only as a fallback when there is no ticket to link to
-    if (ticketUrl) card.actions.push({ type: 'Action.OpenUrl', title: 'View Ticket in Halo', url: ticketUrl });
-    else if (baseUrl) card.actions.push({ type: 'Action.OpenUrl', title: 'Open Halo', url: baseUrl });
-
-    return card;
-}
-
-function cardFromPayload(payload, joined) {
-    const { chat, ticket, agents } = payload;
-    const card = buildCard(chat, ticket, resolveTicket(chat, ticket), haloBaseUrl(chat), validMentions(agents).length > 0, joined);
-    addMentions(card, agents);
-    return card;
+    return { afterMinutes, agents: Array.isArray(escalation.agents) ? escalation.agents : [] };
 }
 
 // Halo "Chat Message Sent" webhook: { event: "chat message sent", object_id: <chat id>, agent_id, ... }
@@ -217,57 +22,131 @@ function isHaloChatWebhook(body) {
     return typeof body.event === 'string' && body.event.toLowerCase() === 'chat message sent' && body.object_id !== undefined;
 }
 
-// Agent joined: update the original card, or reply in its thread if the update fails.
-// Halo's webhook fires on every agent message, so only the first one for a chat does anything.
+// A chat message after the card was sent. Marks the agent as joined on the first agent message,
+// and refreshes "Chat so far" whenever the call carries a newer copy of the chat (chatDetails).
 // Calls that don't apply return 200 with "ignored" so Halo doesn't treat them as webhook failures.
-async function handleAgentJoined(context, body) {
+async function handleChatMessage(context, body) {
     // Halo's webhook envelope carries the chat ID as object_id
     const chatId = body.chatId || body.chat_id || (isHaloChatWebhook(body) ? body.object_id : undefined);
-    const agentName = String(body.agentName || body.agent_name || body.display_name || '').trim();
-
     if (!chatId) {
         context.res = { status: 400, body: { error: 'agentJoined needs chatId' } };
         return;
     }
 
-    // A raw chat message from the end user or the flow (agent_id 0) is not an agent joining
-    if (body.agent_id !== undefined && !(Number(body.agent_id) > 0)) {
+    const latestChat = body.chatDetails && Array.isArray(body.chatDetails.messages) ? body.chatDetails : null;
+    const isAgentMessage = body.event === 'agentJoined' || Number(body.agent_id) > 0;
+    const agentName = String(
+        body.agentName || body.agent_name || agentNameFrom(latestChat, body.agent_id) || body.display_name || ''
+    ).trim();
+
+    if (!isAgentMessage && !latestChat) {
         context.res = { status: 200, body: { success: true, chatId, ignored: 'not an agent message' } };
         return;
     }
 
-    const found = await getChat(chatId);
-    if (!found) {
-        context.log(`Agent message for chat ${chatId} ignored: no card was sent for it`);
-        context.res = { status: 200, body: { success: true, chatId, ignored: 'no card sent for this chat' } };
+    // A closed or abandoned chat no longer needs escalating (only seen if the webhook sends all messages)
+    const isClosed = !!latestChat && !!(latestChat.is_closed || latestChat.is_abandoned);
+
+    // Read-modify-write with an ETag; if another message saved first, re-read and try again
+    let record = null;
+    let joinsNow = false;
+    let isNewer = false;
+    let closesNow = false;
+    for (let attempt = 0; attempt < 3 && !record; attempt++) {
+        const found = await getChat(chatId);
+        if (!found) {
+            context.log(`Message for chat ${chatId} ignored: no card was sent for it`);
+            context.res = { status: 200, body: { success: true, chatId, ignored: 'no card sent for this chat' } };
+            return;
+        }
+
+        const candidate = found.record;
+        joinsNow = isAgentMessage && !candidate.joinedAt;
+        isNewer = !!latestChat && Number(latestChat.last_message_id || 0) > Number(candidate.lastMessageId || 0);
+        closesNow = isClosed && !candidate.closedAt;
+        if (!joinsNow && !isNewer && !closesNow) {
+            context.res = { status: 200, body: { success: true, chatId, alreadyUpdated: true } };
+            return;
+        }
+
+        if (closesNow) candidate.closedAt = new Date().toISOString();
+        if (joinsNow) {
+            candidate.joinedAt = new Date().toISOString();
+            candidate.joinedAgent = agentName;
+        }
+        if (isNewer) {
+            candidate.payload.chat = latestChat;
+            candidate.lastMessageId = Number(latestChat.last_message_id || 0);
+        }
+        if (await saveChat(chatId, candidate, found.etag)) record = candidate;
+    }
+
+    if (!record) {
+        context.res = { status: 200, body: { success: true, chatId, ignored: 'busy: another update for this chat is in progress' } };
         return;
     }
 
-    const { record, etag } = found;
-    if (record.joinedAt) {
-        context.res = { status: 200, body: { success: true, chatId, alreadyUpdated: true } };
-        return;
+    const result = { success: true, chatId };
+
+    // An agent responding (or the chat ending) cancels any pending management escalation
+    if (joinsNow || closesNow) {
+        try {
+            await removePending(chatId);
+        } catch (error) {
+            context.log.warn(`Chat ${chatId}: pending escalation not removed (the timer will skip it anyway): ${error.message}`);
+        }
     }
 
-    // Claim the update first so two messages arriving together only update the card once
-    record.joinedAt = new Date().toISOString();
-    record.joinedAgent = agentName;
-    if (!(await saveChat(chatId, record, etag))) {
-        context.res = { status: 200, body: { success: true, chatId, alreadyUpdated: true } };
-        return;
+    // First agent message: the main card's header changes to "Agent joined"
+    if (joinsNow) {
+        result.agentJoined = true;
+        try {
+            await updateCard(record.conversationId, record.activityId, cardFromPayload(record.payload, record));
+            result.card = 'updated';
+        } catch (error) {
+            context.log.warn(`Card update failed for chat ${chatId}, replying in thread instead: ${error.message}`);
+            await replyInThread(record.conversationId, record.activityId, `${agentName || 'An agent'} has joined the chat.`);
+            result.card = 'replied';
+        }
     }
 
-    let method = 'updated';
-    try {
-        await updateCard(record.conversationId, record.activityId, cardFromPayload(record.payload, { agentName }));
-    } catch (error) {
-        context.log.warn(`Card update failed for chat ${chatId}, replying in thread instead: ${error.message}`);
-        method = 'replied';
-        await replyInThread(record.conversationId, record.activityId, `${agentName || 'An agent'} has joined the chat.`);
+    // Newer chat: refresh the "Chat so far" reply in the thread. A failure here is not worth
+    // failing the webhook over; the next message will try again.
+    if (isNewer) {
+        try {
+            result.transcript = await upsertTranscript(chatId, record);
+        } catch (error) {
+            context.log.warn(`Transcript update failed for chat ${chatId}: ${error.message}`);
+            result.warning = `Transcript not updated: ${error.message}`;
+        }
     }
 
-    context.log(`Agent joined chat ${chatId} (${agentName || 'name not supplied'}), card ${method}`);
-    context.res = { status: 200, body: { success: true, chatId, method } };
+    context.log(`Chat ${chatId}: card ${result.card || 'unchanged'}, transcript ${result.transcript || 'unchanged'}${joinsNow ? ` (agent joined: ${agentName || 'name not supplied'})` : ''}`);
+    context.res = { status: 200, body: result };
+}
+
+// Edit the transcript reply, or post it if the chat doesn't have one yet
+async function upsertTranscript(chatId, record) {
+    const card = buildTranscriptCard(record.payload.chat);
+    if (!card) return 'empty';
+    if (record.transcriptActivityId) {
+        await updateCardInThread(record.conversationId, record.activityId, record.transcriptActivityId, card);
+        return 'updated';
+    }
+    const replyId = await sendCardInThread(record.conversationId, record.activityId, card);
+    await rememberTranscriptReply(chatId, replyId);
+    return 'posted';
+}
+
+// Save the transcript reply's ID onto the chat record (re-reading if another update saved first)
+async function rememberTranscriptReply(chatId, replyId) {
+    if (!replyId) return;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const found = await getChat(chatId);
+        if (!found || found.record.transcriptActivityId) return;
+        found.record.transcriptActivityId = replyId;
+        if (await saveChat(chatId, found.record, found.etag)) return;
+    }
 }
 
 module.exports = async function (context, req) {
@@ -288,9 +167,9 @@ module.exports = async function (context, req) {
     // Agent joined: explicit event, Halo's webhook envelope, or a raw Halo chat message object (has chat_id, no messages array)
     if (body.event === 'agentJoined' || isHaloChatWebhook(body) || (body.chat_id && !body.chat && !Array.isArray(body.messages))) {
         try {
-            await handleAgentJoined(context, body);
+            await handleChatMessage(context, body);
         } catch (error) {
-            context.log.error('Failed to handle agent joined:', error.message);
+            context.log.error('Failed to handle chat message:', error.message);
             context.res = { status: 500, body: { error: error.message } };
         }
         return;
@@ -315,6 +194,10 @@ module.exports = async function (context, req) {
         return;
     }
 
+    const parsedEscalation = parseEscalation(body.escalation);
+    const escalation = parsedEscalation && !parsedEscalation.warning ? parsedEscalation : null;
+    if (parsedEscalation && parsedEscalation.warning) context.log.warn(`Chat ${chat.id}: ${parsedEscalation.warning}`);
+
     let payload = { chat, ticket, agents };
     const resolved = resolveTicket(chat, ticket);
     let mentionWarning = null;
@@ -322,16 +205,16 @@ module.exports = async function (context, req) {
     try {
         let sent;
         try {
-            sent = await sendCard(cardFromPayload(payload, null), channelId);
+            sent = await sendCard(cardFromPayload(payload, {}), channelId);
         } catch (error) {
             // Teams rejects the whole message if a tag mention is invalid (e.g. the tag is in another team).
             // Retry without tag mentions so the card still gets posted.
             const hasTags = Array.isArray(agents) && agents.some(a => a && a.type === 'tag');
-            if (!hasTags) throw error;
+            if (!hasTags || !isTagMentionError(error)) throw error;
             mentionWarning = `Sent without tag mentions: ${error.message}`;
             context.log.warn(`Chat ${chat.id}: send with tag mentions failed, retrying without them: ${error.message}`);
             payload = { ...payload, agents: agents.filter(a => !a || a.type !== 'tag') };
-            sent = await sendCard(cardFromPayload(payload, null), channelId);
+            sent = await sendCard(cardFromPayload(payload, {}), channelId);
         }
         if (!sent) {
             context.res = {
@@ -341,18 +224,48 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Remember where the card went so an agent joining can update it. The card is already sent,
-        // so a failure here is logged rather than failing the request.
+        // "Chat so far" goes in the card's thread rather than on the card
+        let transcriptActivityId = null;
         try {
-            await saveChat(chat.id, { ...sent, payload, createdAt: new Date().toISOString() });
+            const transcriptCard = buildTranscriptCard(chat);
+            if (transcriptCard) transcriptActivityId = await sendCardInThread(sent.conversationId, sent.activityId, transcriptCard);
         } catch (error) {
-            context.log.warn(`Card sent but chat ${chat.id} record not saved (agent join will not update it): ${error.message}`);
+            context.log.warn(`Chat ${chat.id}: transcript reply not posted (the next message will retry): ${error.message}`);
         }
 
-        context.log(`Chat notification sent for chat ${chat.id} (ticket ${resolved ? resolved.id : 'none'}, channel ${channelId || 'default'})`);
+        // Remember where the card went so an agent joining can update it. The card is already sent,
+        // so a failure here is logged rather than failing the request.
+        const createdAt = new Date();
+        let escalationDueAt = null;
+        try {
+            await saveChat(chat.id, {
+                ...sent,
+                transcriptActivityId,
+                payload,
+                escalation,
+                lastMessageId: Number(chat.last_message_id || 0),
+                createdAt: createdAt.toISOString()
+            });
+            // The escalate timer picks this up once it's due, unless an agent responds first
+            if (escalation) {
+                escalationDueAt = new Date(createdAt.getTime() + escalation.afterMinutes * 60000).toISOString();
+                await addPending(chat.id, escalationDueAt);
+            }
+        } catch (error) {
+            context.log.warn(`Card sent but chat ${chat.id} record or escalation not saved (agent join/escalation will not work for it): ${error.message}`);
+        }
+
+        context.log(`Chat notification sent for chat ${chat.id} (ticket ${resolved ? resolved.id : 'none'}, channel ${channelId || 'default'}${escalationDueAt ? `, escalation due ${escalationDueAt}` : ''})`);
         context.res = {
             status: 200,
-            body: { success: true, chatId: chat.id, ticketId: resolved ? resolved.id : null, ...(mentionWarning ? { warning: mentionWarning } : {}) }
+            body: {
+                success: true,
+                chatId: chat.id,
+                ticketId: resolved ? resolved.id : null,
+                ...(escalationDueAt ? { escalationDueAt } : {}),
+                ...(mentionWarning ? { warning: mentionWarning } : {}),
+                ...(parsedEscalation && parsedEscalation.warning ? { escalationWarning: parsedEscalation.warning } : {})
+            }
         };
     } catch (error) {
         context.log.error('Failed to send chat notification:', error.message);

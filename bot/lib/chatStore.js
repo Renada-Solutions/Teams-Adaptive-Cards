@@ -56,4 +56,40 @@ async function saveChat(chatId, record, etag) {
     }
 }
 
-module.exports = { getChat, saveChat };
+// Pending escalations: one empty blob per chat under pending/, with the due time in metadata,
+// so the timer only lists a handful of small blobs rather than every chat ever sent.
+function pendingBlob(chatId) {
+    const safeId = String(chatId).replace(/[^0-9A-Za-z_-]/g, '');
+    return container().getBlockBlobClient(`pending/${safeId}`);
+}
+
+async function addPending(chatId, dueAt) {
+    if (!containerReady) {
+        await container().createIfNotExists();
+        containerReady = true;
+    }
+    await pendingBlob(chatId).upload('', 0, { metadata: { dueat: dueAt } });
+}
+
+async function removePending(chatId) {
+    await pendingBlob(chatId).deleteIfExists();
+}
+
+// Returns [{ chatId, dueAt }] for every pending escalation
+async function listPending() {
+    const pending = [];
+    try {
+        for await (const item of container().listBlobsFlat({ prefix: 'pending/', includeMetadata: true })) {
+            pending.push({
+                chatId: item.name.slice('pending/'.length),
+                dueAt: (item.metadata && item.metadata.dueat) || null
+            });
+        }
+    } catch (e) {
+        if (e.statusCode === 404 || e.code === 'ContainerNotFound') return [];
+        throw e;
+    }
+    return pending;
+}
+
+module.exports = { getChat, saveChat, addPending, removePending, listPending };
