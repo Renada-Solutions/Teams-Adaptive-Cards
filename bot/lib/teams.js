@@ -7,15 +7,25 @@ const adapter = new BotFrameworkAdapter({
     channelAuthTenant: process.env.MicrosoftAppTenantId
 });
 
-// Verify authorization via Bearer token (configured on HaloPSA Custom Integration / runbook)
+// Verify the NOTIFY_SECRET. Halo runbooks send it as a Bearer token; Halo webhooks may only offer
+// Basic auth (secret as username or password) or a URL, so ?token= is accepted too.
 function isAuthorised(req) {
+    const secret = process.env.NOTIFY_SECRET;
+    if (!secret) return false;
+
     const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    return token !== '' && token === process.env.NOTIFY_SECRET;
+    if (authHeader.startsWith('Bearer ')) return authHeader.slice(7) === secret;
+    if (authHeader.startsWith('Basic ')) {
+        const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+        const sep = decoded.indexOf(':');
+        const user = sep === -1 ? decoded : decoded.slice(0, sep);
+        const pass = sep === -1 ? '' : decoded.slice(sep + 1);
+        return user === secret || pass === secret;
+    }
+    return req.query?.token === secret;
 }
 
-// Build @mentions (users, Teams tags with type "tag", or channels with type "channel")
-// and inject into the card's msteams.entities.
+// Build @mentions (users, or Teams tags with type "tag") and inject into the card's msteams.entities.
 // The mention TextBlock goes after the element with id "agents-on-shift-label",
 // or at the top of the card if that label is not found.
 // Drop entries with a blank name or ID (e.g. an unassigned ticket's agent variables),
@@ -39,10 +49,8 @@ function addMentions(card, agents) {
             mentioned: {
                 id: agent.azureId,
                 name: agent.displayName,
-                // Teams tag mentions need type "tag" and the tag's Graph ID in azureId.
-                // Channel mentions need type "channel" and the channel ID (19:...@thread.tacv2) in azureId.
-                ...(agent.type === 'tag' ? { type: 'tag' } : {}),
-                ...(agent.type === 'channel' ? { conversationIdentityType: 'channel' } : {})
+                // Teams tag mentions need type "tag" and the tag's full Graph ID (base64) in azureId
+                ...(agent.type === 'tag' ? { type: 'tag' } : {})
             }
         });
         mentionTexts.push(`<at>${agent.displayName}</at>`);
@@ -80,26 +88,50 @@ function isValidChannelId(channelId) {
     return CHANNEL_ID_PATTERN.test(channelId);
 }
 
-// Send a card to the stored conversation, or to another channel in the same team if channelId is given.
+// Run logic against the stored conversation, or another conversation (channel or thread) in the same team.
 // Returns false if the bot has not been installed yet.
-async function sendCard(card, channelId) {
+async function withConversation(conversationId, logic) {
     const storedReference = await load();
     if (!storedReference) return false;
 
     // Copy rather than mutate: load() returns a cached object shared across invocations
-    const conversationReference = channelId
-        ? { ...storedReference, conversation: { ...storedReference.conversation, id: channelId } }
+    const conversationReference = conversationId
+        ? { ...storedReference, conversation: { ...storedReference.conversation, id: conversationId } }
         : storedReference;
 
-    await adapter.continueConversation(
-        conversationReference,
-        async (turnContext) => {
-            const cardAttachment = CardFactory.adaptiveCard(card);
-            const activity = MessageFactory.attachment(cardAttachment);
-            await turnContext.sendActivity(activity);
-        }
-    );
+    await adapter.continueConversation(conversationReference, logic);
     return true;
 }
 
-module.exports = { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard };
+// Send a card to the stored conversation, or to another channel in the same team if channelId is given.
+// Returns { conversationId, activityId } so the message can be updated later, or null if the bot is not installed.
+async function sendCard(card, channelId) {
+    let result = null;
+    const installed = await withConversation(channelId, async (turnContext) => {
+        const activity = MessageFactory.attachment(CardFactory.adaptiveCard(card));
+        const response = await turnContext.sendActivity(activity);
+        result = {
+            conversationId: turnContext.activity.conversation.id,
+            activityId: response && response.id
+        };
+    });
+    return installed ? result : null;
+}
+
+// Replace a card the bot sent earlier
+async function updateCard(conversationId, activityId, card) {
+    return withConversation(conversationId, async (turnContext) => {
+        const activity = MessageFactory.attachment(CardFactory.adaptiveCard(card));
+        activity.id = activityId;
+        await turnContext.updateActivity(activity);
+    });
+}
+
+// Reply in the thread under a message the bot sent earlier
+async function replyInThread(conversationId, activityId, text) {
+    return withConversation(`${conversationId};messageid=${activityId}`, async (turnContext) => {
+        await turnContext.sendActivity(MessageFactory.text(text));
+    });
+}
+
+module.exports = { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard, updateCard, replyInThread };

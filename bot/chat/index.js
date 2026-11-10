@@ -1,4 +1,5 @@
-const { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard } = require('../lib/teams');
+const { isAuthorised, isValidChannelId, validMentions, addMentions, sendCard, updateCard, replyInThread } = require('../lib/teams');
+const { getChat, saveChat } = require('../lib/chatStore');
 
 // Halo chat messages from the bot/flow have sender_id 0; anything else is the end-user
 const isUserMessage = (m) => m && m.sender_id !== 0;
@@ -91,11 +92,15 @@ function buildTranscript(messages) {
     return items;
 }
 
-function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
+// joined: { agentName } once an agent has joined the chat, otherwise null
+function buildCard(chat, ticket, resolved, baseUrl, hasAgents, joined) {
     const participant = chat.other_participant || (chat.participants || [])[0] || {};
     const userName = participant.name || chat.display_name || 'Unknown user';
     const started = formatTimestamp((chat.messages || [])[0]?.timestamp);
     const ticketUrl = resolved && baseUrl ? `${baseUrl}/ticket?id=${resolved.id}` : null;
+
+    let chatState = chat.livechat_started ? '' : ' | Waiting for an agent';
+    if (joined) chatState = joined.agentName ? ` | Agent joined: ${joined.agentName}` : ' | Agent joined';
 
     const facts = [];
     if (resolved) {
@@ -153,7 +158,7 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
         body: [
             {
                 type: 'Container',
-                style: 'accent',
+                style: joined ? 'good' : 'accent',
                 items: [
                     {
                         type: 'TextBlock',
@@ -165,7 +170,7 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
                     },
                     {
                         type: 'TextBlock',
-                        text: `Chat #${chat.id}${chat.livechat_started ? '' : ' | Waiting for an agent'}`,
+                        text: `Chat #${chat.id}${chatState}`,
                         isSubtle: true,
                         spacing: 'None',
                         wrap: true
@@ -200,6 +205,65 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents) {
     return card;
 }
 
+function cardFromPayload(payload, joined) {
+    const { chat, ticket, agents } = payload;
+    const card = buildCard(chat, ticket, resolveTicket(chat, ticket), haloBaseUrl(chat), validMentions(agents).length > 0, joined);
+    addMentions(card, agents);
+    return card;
+}
+
+// Agent joined: update the original card, or reply in its thread if the update fails.
+// Halo's webhook fires on every agent message, so only the first one for a chat does anything.
+// Calls that don't apply return 200 with "ignored" so Halo doesn't treat them as webhook failures.
+async function handleAgentJoined(context, body) {
+    const chatId = body.chatId || body.chat_id;
+    const agentName = String(body.agentName || body.agent_name || body.display_name || '').trim();
+
+    if (!chatId) {
+        context.res = { status: 400, body: { error: 'agentJoined needs chatId' } };
+        return;
+    }
+
+    // A raw chat message from the end user or the flow (agent_id 0) is not an agent joining
+    if (body.agent_id !== undefined && !(Number(body.agent_id) > 0)) {
+        context.res = { status: 200, body: { success: true, chatId, ignored: 'not an agent message' } };
+        return;
+    }
+
+    const found = await getChat(chatId);
+    if (!found) {
+        context.log(`Agent message for chat ${chatId} ignored: no card was sent for it`);
+        context.res = { status: 200, body: { success: true, chatId, ignored: 'no card sent for this chat' } };
+        return;
+    }
+
+    const { record, etag } = found;
+    if (record.joinedAt) {
+        context.res = { status: 200, body: { success: true, chatId, alreadyUpdated: true } };
+        return;
+    }
+
+    // Claim the update first so two messages arriving together only update the card once
+    record.joinedAt = new Date().toISOString();
+    record.joinedAgent = agentName;
+    if (!(await saveChat(chatId, record, etag))) {
+        context.res = { status: 200, body: { success: true, chatId, alreadyUpdated: true } };
+        return;
+    }
+
+    let method = 'updated';
+    try {
+        await updateCard(record.conversationId, record.activityId, cardFromPayload(record.payload, { agentName }));
+    } catch (error) {
+        context.log.warn(`Card update failed for chat ${chatId}, replying in thread instead: ${error.message}`);
+        method = 'replied';
+        await replyInThread(record.conversationId, record.activityId, `${agentName || 'An agent'} has joined the chat.`);
+    }
+
+    context.log(`Agent joined chat ${chatId} (${agentName || 'name not supplied'}), card ${method}`);
+    context.res = { status: 200, body: { success: true, chatId, method } };
+}
+
 module.exports = async function (context, req) {
     context.log('Chat endpoint hit');
 
@@ -208,8 +272,25 @@ module.exports = async function (context, req) {
         return;
     }
 
-    // Accept either the raw Halo chat object, or { chat, ticket, agents } when the runbook enriches it
-    const body = req.body || {};
+    // Halo webhooks may send a JSON string or a one-item array; normalise to an object
+    let body = req.body || {};
+    if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch { body = {}; }
+    }
+    if (Array.isArray(body)) body = body[0] || {};
+
+    // Agent joined: explicit event, or a raw Halo chat message object (has chat_id, no messages array)
+    if (body.event === 'agentJoined' || (body.chat_id && !body.chat && !Array.isArray(body.messages))) {
+        try {
+            await handleAgentJoined(context, body);
+        } catch (error) {
+            context.log.error('Failed to handle agent joined:', error.message);
+            context.res = { status: 500, body: { error: error.message } };
+        }
+        return;
+    }
+
+    // Chat started: the raw Halo chat object, or { chat, ticket, agents } when the runbook enriches it
     const chat = body.chat || body;
     const ticket = body.ticket || null;
     const agents = body.agents;
@@ -217,6 +298,8 @@ module.exports = async function (context, req) {
     const channelId = (body.channelId || process.env.CHAT_CHANNEL_ID || '').trim() || null;
 
     if (!chat.id || !Array.isArray(chat.messages)) {
+        // Log field names only (no values) so an unexpected Halo payload shape can be diagnosed
+        context.log.warn(`Unrecognised chat payload, top-level fields: ${Object.keys(body).join(', ') || '(none)'}`);
         context.res = { status: 400, body: { error: 'Body must be a Halo chat object (id, messages) or { chat, ticket, agents, channelId }' } };
         return;
     }
@@ -226,10 +309,9 @@ module.exports = async function (context, req) {
         return;
     }
 
+    const payload = { chat, ticket, agents };
     const resolved = resolveTicket(chat, ticket);
-    const hasAgents = validMentions(agents).length > 0;
-    const card = buildCard(chat, ticket, resolved, haloBaseUrl(chat), hasAgents);
-    addMentions(card, agents);
+    const card = cardFromPayload(payload, null);
 
     try {
         const sent = await sendCard(card, channelId);
@@ -239,6 +321,14 @@ module.exports = async function (context, req) {
                 body: { error: 'Bot has not been installed in a team yet. No conversation reference stored.' }
             };
             return;
+        }
+
+        // Remember where the card went so an agent joining can update it. The card is already sent,
+        // so a failure here is logged rather than failing the request.
+        try {
+            await saveChat(chat.id, { ...sent, payload, createdAt: new Date().toISOString() });
+        } catch (error) {
+            context.log.warn(`Card sent but chat ${chat.id} record not saved (agent join will not update it): ${error.message}`);
         }
 
         context.log(`Chat notification sent for chat ${chat.id} (ticket ${resolved ? resolved.id : 'none'}, channel ${channelId || 'default'})`);
