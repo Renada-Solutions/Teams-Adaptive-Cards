@@ -65,7 +65,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   }
 }
 
-// --- Function App (Flex Consumption, Linux, Node 22) ---
+// --- Function App (Flex Consumption, Linux, Node 24) ---
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: appName
   location: location
@@ -133,7 +133,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       }
       runtime: {
         name: 'node'
-        version: '22'
+        version: '24'
       }
     }
   }

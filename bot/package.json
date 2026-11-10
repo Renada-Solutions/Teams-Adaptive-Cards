@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "Teams bot for HaloPSA notifications and Adaptive Card actions",
     "engines": {
-        "node": ">=22.0.0"
+        "node": ">=24.0.0"
     },
     "dependencies": {
         "@azure/storage-blob": "^12.27.0",

@@ -162,7 +162,7 @@
                     },
                     "runtime": {
                         "name": "node",
-                        "version": "22"
+                        "version": "24"
                     }
                 }
             }
