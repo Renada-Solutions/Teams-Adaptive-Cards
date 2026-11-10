@@ -21,6 +21,9 @@ param notifySecret string
 @description('Optional Teams channel ID for Live Chat notifications')
 param chatChannelId string = ''
 
+@description('Optional Teams channel ID for OOH ticket notifications')
+param notifyChannelId string = ''
+
 var deploymentContainerName = 'deployments'
 var packageUrl = 'https://github.com/Renada-Solutions/Teams-Adaptive-Cards/releases/latest/download/bot.zip'
 
@@ -95,6 +98,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'NOTIFY_SECRET'
           value: notifySecret
+        }
+        {
+          name: 'NOTIFY_CHANNEL_ID'
+          value: notifyChannelId
         }
         {
           name: 'CHAT_CHANNEL_ID'

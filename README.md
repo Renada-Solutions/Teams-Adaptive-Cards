@@ -150,13 +150,15 @@ The body can be either:
 
 All `ticket` fields and `agents` are optional. The ticket shown on the card is picked in this order: `ticket.id` from the runbook, then `ticket_id` on the chat (ticket logged from the chat), then the last end-user message that is only a number (flagged on the card as not validated). Links use the origin of the chat's `user_chat_url`, or the `HALO_URL` app setting if set.
 
-**Agent joined:** when the card is sent, the bot saves where it went (`botstate/chats/<chatId>.json`). Add a Halo **Webhook** (Configuration > Integrations > Webhooks) on the **Chat Message Sent** event, message types **Messages from agents**, filtered to this chat profile, pointing at the same `/api/chat` endpoint. The webhook's raw chat message object (`chat_id`, `agent_id`, `display_name`) is used as-is. A runbook can instead send:
+**Agent joined:** when the card is sent, the bot saves where it went (`botstate/chats/<chatId>.json`). Add a Halo **Webhook** (Configuration > Integrations > Webhooks) on the **Chat Message Sent** event, message types **Messages from agents**, filtered to this chat profile, pointing at the same `/api/chat` endpoint, with Basic authentication (password = `NOTIFY_SECRET`). Halo sends a small envelope (`event: "chat message sent"`, `object_id` = chat ID, `agent_id`) with no agent name, so the card shows "Agent joined" without a name. A runbook can instead send:
 
 ```json
 { "event": "agentJoined", "chatId": 1982, "agentName": "Agent Name" }
 ```
 
 The bot edits the original card to show "Agent joined: Agent Name" with a green header. If the edit fails it replies in the card's thread instead. Only the first agent message per chat does anything; user messages (`agent_id` 0) and chats with no card are ignored with a 200 so Halo doesn't count them as failures.
+
+**Installing in more teams:** the bot keeps one stored conversation reference, replaced each time it is installed in a team. Set `NOTIFY_CHANNEL_ID` (OOH alerts) and `CHAT_CHANNEL_ID` (chat alerts) so a new install doesn't move either. Tag mentions only resolve when the bot is installed in the team that owns the tags.
 
 **Auth:** every endpoint accepts `NOTIFY_SECRET` as a Bearer token, as Basic auth (username or password), or as `?token=` on the URL, since Halo webhooks may not offer a Bearer option.
 

@@ -212,11 +212,17 @@ function cardFromPayload(payload, joined) {
     return card;
 }
 
+// Halo "Chat Message Sent" webhook: { event: "chat message sent", object_id: <chat id>, agent_id, ... }
+function isHaloChatWebhook(body) {
+    return typeof body.event === 'string' && body.event.toLowerCase() === 'chat message sent' && body.object_id !== undefined;
+}
+
 // Agent joined: update the original card, or reply in its thread if the update fails.
 // Halo's webhook fires on every agent message, so only the first one for a chat does anything.
 // Calls that don't apply return 200 with "ignored" so Halo doesn't treat them as webhook failures.
 async function handleAgentJoined(context, body) {
-    const chatId = body.chatId || body.chat_id;
+    // Halo's webhook envelope carries the chat ID as object_id
+    const chatId = body.chatId || body.chat_id || (isHaloChatWebhook(body) ? body.object_id : undefined);
     const agentName = String(body.agentName || body.agent_name || body.display_name || '').trim();
 
     if (!chatId) {
@@ -279,8 +285,8 @@ module.exports = async function (context, req) {
     }
     if (Array.isArray(body)) body = body[0] || {};
 
-    // Agent joined: explicit event, or a raw Halo chat message object (has chat_id, no messages array)
-    if (body.event === 'agentJoined' || (body.chat_id && !body.chat && !Array.isArray(body.messages))) {
+    // Agent joined: explicit event, Halo's webhook envelope, or a raw Halo chat message object (has chat_id, no messages array)
+    if (body.event === 'agentJoined' || isHaloChatWebhook(body) || (body.chat_id && !body.chat && !Array.isArray(body.messages))) {
         try {
             await handleAgentJoined(context, body);
         } catch (error) {
@@ -309,12 +315,24 @@ module.exports = async function (context, req) {
         return;
     }
 
-    const payload = { chat, ticket, agents };
+    let payload = { chat, ticket, agents };
     const resolved = resolveTicket(chat, ticket);
-    const card = cardFromPayload(payload, null);
+    let mentionWarning = null;
 
     try {
-        const sent = await sendCard(card, channelId);
+        let sent;
+        try {
+            sent = await sendCard(cardFromPayload(payload, null), channelId);
+        } catch (error) {
+            // Teams rejects the whole message if a tag mention is invalid (e.g. the tag is in another team).
+            // Retry without tag mentions so the card still gets posted.
+            const hasTags = Array.isArray(agents) && agents.some(a => a && a.type === 'tag');
+            if (!hasTags) throw error;
+            mentionWarning = `Sent without tag mentions: ${error.message}`;
+            context.log.warn(`Chat ${chat.id}: send with tag mentions failed, retrying without them: ${error.message}`);
+            payload = { ...payload, agents: agents.filter(a => !a || a.type !== 'tag') };
+            sent = await sendCard(cardFromPayload(payload, null), channelId);
+        }
         if (!sent) {
             context.res = {
                 status: 400,
@@ -332,7 +350,10 @@ module.exports = async function (context, req) {
         }
 
         context.log(`Chat notification sent for chat ${chat.id} (ticket ${resolved ? resolved.id : 'none'}, channel ${channelId || 'default'})`);
-        context.res = { status: 200, body: { success: true, chatId: chat.id, ticketId: resolved ? resolved.id : null } };
+        context.res = {
+            status: 200,
+            body: { success: true, chatId: chat.id, ticketId: resolved ? resolved.id : null, ...(mentionWarning ? { warning: mentionWarning } : {}) }
+        };
     } catch (error) {
         context.log.error('Failed to send chat notification:', error.message);
         context.res = { status: 500, body: { error: error.message } };

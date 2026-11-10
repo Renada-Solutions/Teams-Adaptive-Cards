@@ -25,6 +25,13 @@
                 "description": "Client secret value from your Azure AD App Registration."
             }
         },
+        "notifyChannelId": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Optional. Teams channel ID (19:xxxx@thread.tacv2) for OOH ticket notifications. Leave blank to post them in the channel the bot was last installed to."
+            }
+        },
         "chatChannelId": {
             "type": "string",
             "defaultValue": "",
@@ -116,6 +123,10 @@
                         {
                             "name": "NOTIFY_SECRET",
                             "value": "[variables('notifySecret')]"
+                        },
+                        {
+                            "name": "NOTIFY_CHANNEL_ID",
+                            "value": "[parameters('notifyChannelId')]"
                         },
                         {
                             "name": "CHAT_CHANNEL_ID",

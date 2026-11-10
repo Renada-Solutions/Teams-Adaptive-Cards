@@ -21,6 +21,9 @@ param notifySecret string = newGuid()
 @description('Optional Teams channel ID (19:xxxx@thread.tacv2) for Live Chat notifications. Blank posts to the install channel.')
 param chatChannelId string = ''
 
+@description('Optional Teams channel ID (19:xxxx@thread.tacv2) for OOH ticket notifications. Blank posts to the install channel.')
+param notifyChannelId string = ''
+
 // --- Function App Module ---
 module functionApp 'modules/functionApp.bicep' = {
   name: 'functionApp'
@@ -32,6 +35,7 @@ module functionApp 'modules/functionApp.bicep' = {
     microsoftAppTenantId: microsoftAppTenantId
     notifySecret: notifySecret
     chatChannelId: chatChannelId
+    notifyChannelId: notifyChannelId
   }
 }
 

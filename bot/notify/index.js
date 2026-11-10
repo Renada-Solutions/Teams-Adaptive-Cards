@@ -153,7 +153,9 @@ module.exports = async function (context, req) {
 
     // Send the proactive message
     try {
-        const sent = await sendCard(card);
+        // NOTIFY_CHANNEL_ID pins OOH alerts to a channel, so installing the bot in another team
+        // (which replaces the stored conversation reference) doesn't move them
+        const sent = await sendCard(card, (process.env.NOTIFY_CHANNEL_ID || '').trim() || null);
         if (!sent) {
             context.res = {
                 status: 400,
