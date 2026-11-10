@@ -25,6 +25,13 @@
                 "description": "Client secret value from your Azure AD App Registration."
             }
         },
+        "ticketPrefix": {
+            "type": "string",
+            "defaultValue": "#",
+            "metadata": {
+                "description": "Optional. Text shown before ticket numbers on chat cards, e.g. VT: gives VT:2148969."
+            }
+        },
         "notifyChannelId": {
             "type": "string",
             "defaultValue": "",
@@ -123,6 +130,10 @@
                         {
                             "name": "NOTIFY_SECRET",
                             "value": "[variables('notifySecret')]"
+                        },
+                        {
+                            "name": "TICKET_PREFIX",
+                            "value": "[parameters('ticketPrefix')]"
                         },
                         {
                             "name": "NOTIFY_CHANNEL_ID",

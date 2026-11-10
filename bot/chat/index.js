@@ -164,6 +164,11 @@ module.exports = async function (context, req) {
     }
     if (Array.isArray(body)) body = body[0] || {};
 
+    // Halo webhook with a custom body: { request: <Halo's webhook envelope>, chatDetails: <the chat> }
+    if (body.request && typeof body.request === 'object' && isHaloChatWebhook(body.request)) {
+        body = { ...body.request, chatDetails: body.chatDetails };
+    }
+
     // Agent joined: explicit event, Halo's webhook envelope, or a raw Halo chat message object (has chat_id, no messages array)
     if (body.event === 'agentJoined' || isHaloChatWebhook(body) || (body.chat_id && !body.chat && !Array.isArray(body.messages))) {
         try {

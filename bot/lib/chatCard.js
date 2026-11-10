@@ -40,22 +40,51 @@ function haloBaseUrl(chat) {
     }
 }
 
-// Work out which ticket the chat is about, in order of trust:
-// 1. ticket.id supplied by the runbook (validated there)
-// 2. ticket_id on the chat (ticket logged from the chat)
-// 3. the last end-user message that is just a number (typed in the flow)
-function resolveTicket(chat, ticket) {
-    if (ticket && ticket.id) return { id: String(ticket.id), source: 'existing ticket' };
-    if (chat.ticket_id > 0) return { id: String(chat.ticket_id), source: 'logged from chat' };
+// Halo variables that weren't set can come through as the text "null"/"undefined"; treat those as empty
+function cleanValue(value) {
+    if (value === null || value === undefined) return '';
+    const text = String(value).trim();
+    return /^(null|undefined)$/i.test(text) ? '' : text;
+}
 
-    const typed = (chat.messages || [])
+// Ticket numbers the end user typed in the chat flow (the "which ticket?" answer)
+function typedTicketNumbers(chat) {
+    return (chat.messages || [])
         .filter(isUserMessage)
         .map(m => (m.text || '').match(/^\s*#?(\d{1,10})\s*$/))
         .filter(Boolean)
-        .pop();
-    if (typed) return { id: typed[1], source: 'entered by user, not validated' };
+        .map(match => match[1]);
+}
 
+function parseBool(value) {
+    const text = cleanValue(value).toLowerCase();
+    if (['true', 'yes', '1'].includes(text)) return true;
+    if (['false', 'no', '0'].includes(text)) return false;
     return null;
+}
+
+// Work out which ticket the chat is about, in order of trust:
+// 1. ticket.id supplied by the runbook (validated there), else ticket_id on the chat
+// 2. the last end-user message that is just a number (typed in the flow)
+// The ticket counts as existing if the user typed its number in the flow, otherwise it was raised
+// from the chat. The runbook can override that with ticket.isNew.
+function resolveTicket(chat, ticket) {
+    const typed = typedTicketNumbers(chat);
+    const runbookId = cleanValue(ticket && ticket.id);
+    const id = /^\d+$/.test(runbookId) ? runbookId : (chat.ticket_id > 0 ? String(chat.ticket_id) : '');
+
+    if (id) {
+        const explicit = parseBool(ticket && ticket.isNew);
+        const isNew = explicit !== null ? explicit : !typed.includes(id);
+        return { id, source: isNew ? 'new ticket raised' : 'existing ticket' };
+    }
+    if (typed.length) return { id: typed[typed.length - 1], source: 'entered by user, not validated' };
+    return null;
+}
+
+// Ticket reference as shown on the card, e.g. "VT:2148969" with TICKET_PREFIX "VT:" (default "#")
+function ticketLabel(id) {
+    return `${process.env.TICKET_PREFIX || '#'}${id}`;
 }
 
 // Keep the card well under Teams' message size limit on long chats
@@ -79,7 +108,8 @@ function buildTranscript(chat) {
     let pendingQuestion = '';
 
     for (const m of (chat && chat.messages) || []) {
-        const text = stripHtml(m.text);
+        // Teams markdown ignores single newlines, so any run of line breaks becomes one paragraph break
+        const text = stripHtml(m.text).replace(/\s*(\r?\n)+\s*/g, '\n\n');
         const systemId = Number(m.system_id);
 
         if (systemId === -1 || (m.sender_id === 0 && !(systemId > 0))) {
@@ -163,16 +193,19 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents, status) {
     if (resolved) {
         facts.push({
             title: 'Ticket:',
-            value: ticketUrl ? `[#${resolved.id}](${ticketUrl}) (${resolved.source})` : `#${resolved.id} (${resolved.source})`
+            value: ticketUrl
+                ? `[${ticketLabel(resolved.id)}](${ticketUrl}) (${resolved.source})`
+                : `${ticketLabel(resolved.id)} (${resolved.source})`
         });
     } else {
         facts.push({ title: 'Ticket:', value: 'None linked' });
     }
     if (ticket) {
-        if (ticket.summary) facts.push({ title: 'Summary:', value: stripHtml(ticket.summary) });
-        if (ticket.status) facts.push({ title: 'Status:', value: ticket.status });
-        if (ticket.priority) facts.push({ title: 'Priority:', value: ticket.priority });
-        if (ticket.agent) facts.push({ title: 'Agent:', value: ticket.agent });
+        const summary = stripHtml(cleanValue(ticket.summary));
+        if (summary) facts.push({ title: 'Summary:', value: summary });
+        if (cleanValue(ticket.status)) facts.push({ title: 'Status:', value: cleanValue(ticket.status) });
+        if (cleanValue(ticket.priority)) facts.push({ title: 'Priority:', value: cleanValue(ticket.priority) });
+        if (cleanValue(ticket.agent)) facts.push({ title: 'Agent:', value: cleanValue(ticket.agent) });
     }
 
     const details = [{ type: 'FactSet', facts }];
@@ -201,7 +234,7 @@ function buildCard(chat, ticket, resolved, baseUrl, hasAgents, status) {
                         type: 'TextBlock',
                         size: 'Medium',
                         weight: 'Bolder',
-                        text: `New Live Chat - ${userName}${ticket && ticket.client ? ` (${ticket.client})` : ''}`,
+                        text: `New Live Chat - ${userName}${ticket && cleanValue(ticket.client) ? ` (${cleanValue(ticket.client)})` : ''}`,
                         style: 'heading',
                         wrap: true
                     },

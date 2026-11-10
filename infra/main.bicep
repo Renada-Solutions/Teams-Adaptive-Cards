@@ -24,6 +24,9 @@ param chatChannelId string = ''
 @description('Optional Teams channel ID (19:xxxx@thread.tacv2) for OOH ticket notifications. Blank posts to the install channel.')
 param notifyChannelId string = ''
 
+@description('Text shown before ticket numbers on chat cards, e.g. VT: gives VT:2148969')
+param ticketPrefix string = '#'
+
 // --- Function App Module ---
 module functionApp 'modules/functionApp.bicep' = {
   name: 'functionApp'
@@ -36,6 +39,7 @@ module functionApp 'modules/functionApp.bicep' = {
     notifySecret: notifySecret
     chatChannelId: chatChannelId
     notifyChannelId: notifyChannelId
+    ticketPrefix: ticketPrefix
   }
 }
 
