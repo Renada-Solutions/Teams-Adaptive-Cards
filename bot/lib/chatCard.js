@@ -23,12 +23,21 @@ function truncate(text, max) {
 
 // Halo chat timestamps are UTC without a zone. Adaptive Card DATE()/TIME() functions render
 // them in each viewer's own time zone and locale, so UK and NZ agents both see local time.
-function localDateTime(ts) {
+function utcIso(ts) {
     if (!ts) return '';
     const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(ts) ? ts : ts + 'Z');
     if (isNaN(date)) return '';
-    const iso = date.toISOString().replace(/\.\d{3}Z$/, 'Z');
-    return `{{DATE(${iso}, SHORT)}}, {{TIME(${iso})}}`;
+    return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function localDateTime(ts) {
+    const iso = utcIso(ts);
+    return iso ? `{{DATE(${iso}, SHORT)}}, {{TIME(${iso})}}` : '';
+}
+
+function localTime(ts) {
+    const iso = utcIso(ts);
+    return iso ? `{{TIME(${iso})}}` : '';
 }
 
 function haloBaseUrl(chat) {
@@ -99,6 +108,37 @@ function agentNameFrom(chat, agentId) {
     return (message && message.display_name) || '';
 }
 
+// A live chat message as a bubble: agents blue and indented from the right, the end user grey on
+// the left, each labelled with their role and the time (in the viewer's own time zone)
+function chatBubble(name, isAgent, timestamp, text) {
+    const time = localTime(timestamp);
+    const bubble = {
+        type: 'Column',
+        width: 85,
+        items: [{
+            type: 'Container',
+            style: isAgent ? 'accent' : 'emphasis',
+            items: [
+                {
+                    type: 'TextBlock',
+                    text: `${name} (${isAgent ? 'Agent' : 'End user'})${time ? ` | ${time}` : ''}`,
+                    size: 'Small',
+                    weight: 'Bolder',
+                    isSubtle: true,
+                    wrap: true
+                },
+                { type: 'TextBlock', text, wrap: true, spacing: 'None' }
+            ]
+        }]
+    };
+    const spacer = { type: 'Column', width: 15, items: [] };
+    return {
+        type: 'ColumnSet',
+        spacing: 'Small',
+        columns: isAgent ? [spacer, bubble] : [bubble, spacer]
+    };
+}
+
 // Halo message kinds, by system_id:
 //   -1  chat flow (bot) message: a question, held until the user answers it
 //    0  a real message from the end user (sender_id 1) or an agent (agent_id > 0)
@@ -138,13 +178,7 @@ function buildTranscript(chat) {
         const name = isAgent
             ? agentNameFrom(chat, m.agent_id) || m.display_name || 'Agent'
             : m.display_name || 'User';
-        entries.push([{
-            type: 'TextBlock',
-            text: `**${name}:** ${truncate(text, 500)}`,
-            wrap: true,
-            spacing: 'Small',
-            ...(isAgent ? { color: 'Accent' } : {})
-        }]);
+        entries.push([chatBubble(name, isAgent, m.timestamp, truncate(text, 500))]);
         pendingQuestion = '';
     }
 
@@ -299,6 +333,8 @@ function cardFromPayload(payload, record) {
     return card;
 }
 
+const minutes = (n) => `${n} minute${Number(n) === 1 ? '' : 's'}`;
+
 // Posted in the card's thread when no agent has responded within the threshold. A new reply
 // (unlike an edit) notifies the people it @mentions.
 function buildEscalationCard(afterMinutes, agents) {
@@ -313,7 +349,7 @@ function buildEscalationCard(afterMinutes, agents) {
                 items: [
                     {
                         type: 'TextBlock',
-                        text: `No agent has responded to this chat after ${afterMinutes} minutes`,
+                        text: `No agent has responded to this chat after ${minutes(afterMinutes)}`,
                         weight: 'Bolder',
                         wrap: true
                     },
@@ -335,4 +371,44 @@ function buildEscalationCard(afterMinutes, agents) {
     return card;
 }
 
-module.exports = { stripHtml, agentNameFrom, buildTranscriptCard, cardFromPayload, buildEscalationCard, resolveTicket };
+// Replaces the escalation reply once an agent responds, so the thread doesn't end on an unresolved
+// red alert. It's an edit, so management aren't notified again (and there are no @mentions in it).
+function buildEscalationResolvedCard(record) {
+    const { afterMinutes, agents } = record.escalation || {};
+    const responseMinutes = Math.max(1, Math.round((Date.parse(record.joinedAt) - Date.parse(record.createdAt)) / 60000));
+    const who = record.joinedAgent || 'An agent';
+    const names = (agents || []).map(a => a && a.displayName).filter(Boolean).join(', ');
+    return {
+        type: 'AdaptiveCard',
+        $schema: 'https://adaptivecards.io/schemas/adaptive-card.json',
+        version: '1.5',
+        body: [
+            {
+                type: 'Container',
+                style: 'good',
+                items: [
+                    {
+                        type: 'TextBlock',
+                        text: isNaN(responseMinutes) ? `${who} responded` : `${who} responded after ${minutes(responseMinutes)}`,
+                        weight: 'Bolder',
+                        wrap: true
+                    },
+                    {
+                        type: 'TextBlock',
+                        text: `Escalated after ${afterMinutes ? minutes(afterMinutes) : 'the threshold'} with no response${names ? ` (${names})` : ''}`,
+                        size: 'Small',
+                        isSubtle: true,
+                        wrap: true,
+                        spacing: 'Small'
+                    }
+                ]
+            }
+        ],
+        msteams: { width: 'Full' }
+    };
+}
+
+module.exports = {
+    stripHtml, agentNameFrom, buildTranscriptCard, cardFromPayload,
+    buildEscalationCard, buildEscalationResolvedCard, resolveTicket
+};

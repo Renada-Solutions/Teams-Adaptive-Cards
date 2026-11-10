@@ -156,7 +156,7 @@ All `ticket` fields and `agents` are optional; fields that arrive as the text `n
 { "event": "agentJoined", "chatId": 1982, "agentName": "Agent Name" }
 ```
 
-If the webhook body also carries the full chat as `chatDetails` (either alongside the envelope fields, or as `{ "request": <envelope>, "chatDetails": <chat> }`) (as the HaloPSA webhook can be set up to send), the agent's name comes from its `participants`, and "Chat so far" is rebuilt from it every time a newer copy arrives (by `last_message_id`): flow answers, live messages from the user and agents (agents highlighted), and system events such as "joined the chat". Only the last 20 entries are shown.
+If the webhook body also carries the full chat as `chatDetails` (either alongside the envelope fields, or as `{ "request": <envelope>, "chatDetails": <chat> }`) (as the HaloPSA webhook can be set up to send), the agent's name comes from its `participants`, and "Chat so far" is rebuilt from it every time a newer copy arrives (by `last_message_id`): flow answers, live messages as chat bubbles (agents blue on the right, the end user grey on the left, each labelled with role and local time), and system events such as "joined the chat". Only the last 20 entries are shown.
 
 "Chat so far" is posted as a single reply in the card's thread when the card is sent, then edited in place rather than adding a reply per message, so thread followers (including anyone @mentioned on the card) aren't notified for every chat message. The card's start time uses Adaptive Card `DATE()`/`TIME()` functions, so each viewer sees it in their own time zone.
 
@@ -171,7 +171,7 @@ The bot edits the original card to show "Agent joined: Agent Name" with a green 
 }
 ```
 
-The `escalate` timer function runs every minute. If no agent message has arrived `afterMinutes` after the card was posted, it posts a reply in the card's thread @mentioning `agents` and turns the card's header red ("No response after 5 min - escalated"). An agent responding later turns it green as usual. Each chat is escalated at most once; an agent responding (or the chat closing, if the webhook sends all messages) cancels it. Without `escalation` nothing changes.
+The `escalate` timer function runs every minute. If no agent message has arrived `afterMinutes` after the card was posted, it posts a reply in the card's thread @mentioning `agents` and turns the card's header red ("No response after 5 min - escalated"). An agent responding later turns the header green as usual and edits the escalation reply to green ("Agent Name responded after N minutes"), without notifying management again. Each chat is escalated at most once; an agent responding (or the chat closing, if the webhook sends all messages) cancels it. Without `escalation` nothing changes.
 
 **Installing in more teams:** the bot keeps one stored conversation reference, replaced each time it is installed in a team. Set `NOTIFY_CHANNEL_ID` (OOH alerts) and `CHAT_CHANNEL_ID` (chat alerts) so a new install doesn't move either. Tag mentions only resolve when the bot is installed in the team that owns the tags.
 

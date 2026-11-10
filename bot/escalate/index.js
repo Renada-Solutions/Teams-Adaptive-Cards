@@ -1,6 +1,6 @@
-const { sendCardInThread, updateCard, isTagMentionError } = require('../lib/teams');
+const { sendCardInThread, updateCardInThread, updateCard, isTagMentionError } = require('../lib/teams');
 const { getChat, saveChat, listPending, removePending } = require('../lib/chatStore');
-const { buildEscalationCard, cardFromPayload } = require('../lib/chatCard');
+const { buildEscalationCard, buildEscalationResolvedCard, cardFromPayload } = require('../lib/chatCard');
 
 // Pending escalations this far overdue (e.g. after an outage) are dropped rather than sent late
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -39,34 +39,55 @@ async function escalate(context, chatId, stale) {
     if (!(await saveChat(chatId, record, found.etag))) return;
 
     const { afterMinutes, agents } = record.escalation;
+    let replyId;
     try {
-        await sendEscalation(context, chatId, record, afterMinutes, agents);
+        replyId = await sendEscalation(context, chatId, record, afterMinutes, agents);
     } catch (error) {
         await releaseClaim(chatId, claimedAt);
         throw error;
     }
     await removePending(chatId);
 
-    // Turn the main card's header red so the channel shows it at a glance
+    // Save the reply's ID so an agent responding later can turn it green. Use the record as saved
+    // now, in case an agent joined while the escalation was being sent.
+    const latest = (await rememberEscalationReply(chatId, replyId)) || record;
+
     try {
-        await updateCard(record.conversationId, record.activityId, cardFromPayload(record.payload, record));
+        if (latest.joinedAt && replyId) {
+            await updateCardInThread(latest.conversationId, latest.activityId, replyId, buildEscalationResolvedCard(latest));
+        }
+        // Red header if still unanswered; green if an agent got there in the meantime
+        await updateCard(latest.conversationId, latest.activityId, cardFromPayload(latest.payload, latest));
     } catch (error) {
-        context.log.warn(`Chat ${chatId}: escalated, but card header not updated: ${error.message}`);
+        context.log.warn(`Chat ${chatId}: escalated, but card not updated: ${error.message}`);
     }
 
     context.log(`Chat ${chatId}: no agent response after ${afterMinutes} min, escalated`);
 }
 
+// Returns the updated record, or null if it couldn't be saved
+async function rememberEscalationReply(chatId, replyId) {
+    if (!replyId) return null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const found = await getChat(chatId);
+        if (!found) return null;
+        found.record.escalationActivityId = replyId;
+        if (await saveChat(chatId, found.record, found.etag)) return found.record;
+    }
+    return null;
+}
+
 // A new thread reply @mentioning management. As with the chat card, Teams rejects the whole
 // message if a tag mention is invalid, so retry without tags rather than not escalating at all.
+// Returns the reply's activity ID.
 async function sendEscalation(context, chatId, record, afterMinutes, agents) {
     try {
-        await sendCardInThread(record.conversationId, record.activityId, buildEscalationCard(afterMinutes, agents));
+        return await sendCardInThread(record.conversationId, record.activityId, buildEscalationCard(afterMinutes, agents));
     } catch (error) {
         const hasTags = agents.some(a => a && a.type === 'tag');
         if (!hasTags || !isTagMentionError(error)) throw error;
         context.log.warn(`Chat ${chatId}: escalation with tag mentions failed, retrying without them: ${error.message}`);
-        await sendCardInThread(record.conversationId, record.activityId, buildEscalationCard(afterMinutes, agents.filter(a => !a || a.type !== 'tag')));
+        return sendCardInThread(record.conversationId, record.activityId, buildEscalationCard(afterMinutes, agents.filter(a => !a || a.type !== 'tag')));
     }
 }
 

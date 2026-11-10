@@ -3,7 +3,9 @@ const {
     sendCard, updateCard, replyInThread, sendCardInThread, updateCardInThread
 } = require('../lib/teams');
 const { getChat, saveChat, addPending, removePending } = require('../lib/chatStore');
-const { agentNameFrom, buildTranscriptCard, cardFromPayload, resolveTicket } = require('../lib/chatCard');
+const {
+    agentNameFrom, buildTranscriptCard, cardFromPayload, buildEscalationResolvedCard, resolveTicket
+} = require('../lib/chatCard');
 
 // Optional escalation from the start runbook: { afterMinutes: 1-1440, agents: [mentions] }.
 // Returns null if absent; { warning } if present but unusable (e.g. a blank Halo variable),
@@ -107,6 +109,16 @@ async function handleChatMessage(context, body) {
             context.log.warn(`Card update failed for chat ${chatId}, replying in thread instead: ${error.message}`);
             await replyInThread(record.conversationId, record.activityId, `${agentName || 'An agent'} has joined the chat.`);
             result.card = 'replied';
+        }
+
+        // Already escalated: turn the red escalation reply green so the thread doesn't end on it
+        if (record.escalatedAt && record.escalationActivityId) {
+            try {
+                await updateCardInThread(record.conversationId, record.activityId, record.escalationActivityId, buildEscalationResolvedCard(record));
+                result.escalation = 'resolved';
+            } catch (error) {
+                context.log.warn(`Chat ${chatId}: escalation reply not updated: ${error.message}`);
+            }
         }
     }
 
