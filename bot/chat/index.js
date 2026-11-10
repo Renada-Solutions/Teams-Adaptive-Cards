@@ -111,13 +111,29 @@ async function handleChatMessage(context, body) {
             result.card = 'replied';
         }
 
-        // Already escalated: turn the red escalation reply green so the thread doesn't end on it
-        if (record.escalatedAt && record.escalationActivityId) {
+        // Already escalated: turn the red escalation reply green so the thread doesn't end on it.
+        // If that reply can't be edited (no saved ID, e.g. sent by an older version, or Teams refuses),
+        // post the green "responded" card as a new reply instead. An escalation claimed in the last
+        // 2 minutes with no ID yet is still being sent; the escalate timer turns it green itself.
+        const escalationInFlight = record.escalatedAt && !record.escalationActivityId
+            && Date.now() - Date.parse(record.escalatedAt) < 2 * 60000;
+        if (escalationInFlight) {
+            result.escalation = 'being sent; the timer will mark it resolved';
+        } else if (record.escalatedAt) {
+            const resolvedCard = buildEscalationResolvedCard(record);
             try {
-                await updateCardInThread(record.conversationId, record.activityId, record.escalationActivityId, buildEscalationResolvedCard(record));
+                if (!record.escalationActivityId) throw new Error('escalation reply ID was not saved');
+                await updateCardInThread(record.conversationId, record.activityId, record.escalationActivityId, resolvedCard);
                 result.escalation = 'resolved';
             } catch (error) {
-                context.log.warn(`Chat ${chatId}: escalation reply not updated: ${error.message}`);
+                context.log.warn(`Chat ${chatId}: escalation reply not edited (${error.message}), posting a new reply instead`);
+                try {
+                    await sendCardInThread(record.conversationId, record.activityId, resolvedCard);
+                    result.escalation = 'resolved (new reply)';
+                } catch (replyError) {
+                    context.log.warn(`Chat ${chatId}: escalation resolution not posted: ${replyError.message}`);
+                    result.warning = `Escalation not marked resolved: ${replyError.message}`;
+                }
             }
         }
     }
